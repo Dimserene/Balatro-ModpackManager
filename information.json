@@ -1,7 +1,7 @@
 {
-  "latest_version": "1.8.1",
+  "latest_version": "1.8.2",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Fix up Linux support.\n- Check version now supports modpack branches.",
+  "changelog": "- Fix presets not reading.\n- Fixed customized game directory not registered by manager.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
@@ -54,26 +54,6 @@
           "name": "Experimental-Pack",
           "url": "https://github.com/Dimserene/Experimental-Pack.git",
           "description": "Contains relatively new mods, for fresh new features and concepts."
-        }
-      ]
-    },
-    {
-      "category": "GayCoonie",
-      "modpacks": [
-        {
-          "name": "Coonies-Modpack",
-          "url": "https://github.com/GayCoonie/Coonies-Mod-Pack/releases/latest/download/Mods.zip",
-          "description": "A fun collection of mods picked by Coonie, adding new twists to the game."
-        }
-      ]
-    },
-    {
-      "category": "Elbe",
-      "modpacks": [
-        {
-          "name": "elbes-Modpack",
-          "url": "https://github.com/lshtech/elbes-Modpack.git",
-          "description": "A modpack crafted by Elbe that includes everything, but it's probably unstable."
         }
       ]
     }

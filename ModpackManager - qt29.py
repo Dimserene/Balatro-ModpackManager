@@ -12,9 +12,9 @@ import pandas as pd
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/01/19"
+DATE = "2025/01/23"
 ITERATION = "29"
-VERSION = Version("1.8.1")  # Current version of the Modpack Manager
+VERSION = Version("1.8.2")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
@@ -795,6 +795,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     def create_widgets(self):
         layout = QGridLayout()
 
+        # Set equal stretch for all columns
+        for i in range(6):  # Assuming a 6-column layout
+            layout.setColumnStretch(i, 1)
+
         # Title label
         self.title_label = QLabel("☷☷☷Dimserene's Modpack Manager☷☷☷", self)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -829,7 +833,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.addWidget(self.refresh_button, 3, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Modpack selection dropdown
-        self.modpack_label = QLabel("Select Modpack:", self)
+        self.modpack_label = QLabel("Modpack:", self)
         self.modpack_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.modpack_label, 4, 0, 1, 1)
 
@@ -943,7 +947,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.install_lovely_button.setToolTip("Install/update lovely injector")
 
         # Mod List button
-        self.mod_list_button = QPushButton("Mod List / Feedback", self)
+        self.mod_list_button = QPushButton("Mod List", self)
         self.mod_list_button.setStyleSheet("font: 10pt 'Helvetica';")
         layout.addWidget(self.mod_list_button, 10, 0, 1, 2)
         self.mod_list_button.clicked.connect(self.open_mod_list)
@@ -1268,8 +1272,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         try:
             with open(SETTINGS_FILE, "w") as f:
                 json.dump(self.settings, f, indent=4)
+
+            self.load_settings()  # Reload the settings after saving
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
+
         finally:
             if popup:
                 popup.close()
@@ -1695,6 +1703,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 ############################################################
 
     def play_game(self):
+        self.settings = self.load_settings()
+
         # Check if Lovely Injector is installed
         if not self.check_lovely_injector_installed():
             QMessageBox.warning(
@@ -1704,14 +1714,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             )
             return
 
-        self.settings = self.load_settings()
-
         # Check if the game directory is set
         if system_platform == "Windows":
             # Construct the path to the game executable
-            game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
-
             self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
+            game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
             self.profile_name = self.settings.get("profile_name")        
             self.mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
             remove_debug_folders(self.mods_path)
@@ -2778,7 +2785,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     def load_presets(self):
         """Load presets from the JSON file."""
         try:
-            with open("presets.json", "r") as file:
+            with open(PRESETS_FILE, "r") as file:
                 return json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
@@ -3254,10 +3261,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Expand and normalize the game directory path
         if system_platform == "Darwin":  # macOS
-            game_dir = os.path.abspath(os.path.expanduser(self.game_dir))
+            game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             lovely_path = os.path.join(game_dir, "liblovely.dylib")
         elif system_platform == "Windows" or "Linux":
-            game_dir = os.path.abspath(os.path.expandvars(self.game_dir))
+            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             lovely_path = os.path.join(game_dir, "version.dll")
 
         if not os.path.exists(lovely_path):
