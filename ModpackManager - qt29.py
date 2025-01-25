@@ -1,7 +1,7 @@
 import tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, git, time, platform
 from datetime import datetime
 from PyQt6.QtGui import QColor, QPixmap, QDesktopServices
-from PyQt6.QtCore import QTranslator, QLocale, QUrl, Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
+from PyQt6.QtCore import QUrl, Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
 from PyQt6.QtWidgets import QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QFrame, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout, QSpinBox
 from git import Repo, GitCommandError
 from packaging.version import Version
@@ -12,12 +12,11 @@ import pandas as pd
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/01/25"
+DATE = "2025/01/23"
 ITERATION = "29"
-VERSION = Version("1.8.3")  # Current version of the Modpack Manager
+VERSION = Version("1.8.2")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
-translator = QTranslator()
 
 if system_platform == "Windows":
     SETTINGS_FOLDER = os.path.abspath(os.path.expandvars(r"%AppData%\\Balatro\\ManagerSettings"))
@@ -70,9 +69,6 @@ CSV_CACHE_FILE = os.path.join(SETTINGS_FOLDER, "cached_data.csv")
 
 LOGO_URL = "https://raw.githubusercontent.com/Dimserene/Dimserenes-Modpack/refs/heads/main/NewFullPackLogo%20New%20Year.png"
 LOGO_PATH =  os.path.join(SETTINGS_FOLDER, "logoNewYear.png")  # File name to save the downloaded logo
-
-TRANSLATIONS_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/refs/heads/main/translations"
-TRANSLATIONS_FOLDER = os.path.join(SETTINGS_FOLDER, "translations")  # Folder to store translation files
 
 MODPACKS_FOLDER = os.path.join(os.getcwd(), "Modpacks")  # Folder to store downloaded modpacks
 
@@ -139,41 +135,6 @@ def download_logo(url, save_path):
         print(f"Failed to download logo: {e}")
         exit(1)
 
-def download_localization_files(base_url, save_folder):
-    """
-    Download localization files for the app.
-
-    Args:
-        base_url (str): The base URL where the localization files are hosted.
-        save_folder (str): The folder where localization files will be saved.
-    """
-    localization_files = ["zh_TW.qm"]  # List of localization files to download
-
-    # Ensure the translations folder exists
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-        print(f"Created translations folder: {save_folder}")
-
-    for file_name in localization_files:
-        file_url = f"{base_url}/{file_name}"  # Construct the full URL
-        save_path = os.path.join(save_folder, file_name)
-
-        try:
-            # Download the file
-            response = requests.get(file_url, timeout=10)
-            response.raise_for_status()
-
-            # Save the file
-            with open(save_path, "wb") as f:
-                f.write(response.content)
-            print(f"Localization file downloaded successfully: {save_path}")
-
-        except requests.RequestException as e:
-            print(f"Failed to download localization file '{file_name}': {e}")
-            continue  # Skip to the next file instead of exiting
-
-download_localization_files(TRANSLATIONS_URL, TRANSLATIONS_FOLDER)
-
 def remove_debug_folders(mods_directory):
     """
     Check for folders other than 'Steamodded' that contain 'tk_debug_window.py'
@@ -194,7 +155,7 @@ def is_online(test_url="https://www.google.com", parent=None):
         return response.status_code == 200
     except requests.RequestException:
         if parent:
-            QMessageBox.warning(parent, self.tr("Offline Mode"), self.tr("Unable to fetch modpack data. Using cached data if available."))
+            QMessageBox.warning(parent, "Offline Mode", "Unable to fetch modpack data. Using cached data if available.")
         return False
 
 ############################################################
@@ -286,11 +247,11 @@ def fetch_csv_data(url, parent=None):
         except requests.RequestException as e:
             print(f"Error fetching CSV data: {e}")
             if parent:
-                QMessageBox.warning(parent, self.tr("Offline Mode"), self.tr("Failed to fetch CSV data. Using cached data if available."))
+                QMessageBox.warning(parent, "Offline Mode", "Failed to fetch CSV data. Using cached data if available.")
     else:
         print("Offline: Cannot fetch CSV data without an internet connection.")
         if parent:
-            QMessageBox.information(parent, self.tr("Offline Mode"), self.tr("No internet connection detected. Using cached CSV data."))
+            QMessageBox.information(parent, "Offline Mode", "No internet connection detected. Using cached CSV data.")
 
     # Fallback to cached CSV data
     return load_cached_csv_data()
@@ -314,7 +275,7 @@ def load_cached_csv_data():
 # Process data to extract genres and tags
 def process_genres_tags(data):
     if 'Genre' not in data.columns or 'Tags' not in data.columns:
-        raise KeyError(self.tr("Required columns 'Genre' and 'Tags' not found in the data."))
+        raise KeyError("Required columns 'Genre' and 'Tags' not found in the data.")
 
     genres = data['Genre'].unique()
     genre_tags = {}
@@ -384,11 +345,11 @@ class ModpackDownloadWorker(QThread):
                         shutil.rmtree(self.repo_name, onerror=readonly_handler)
                         print(f"Deleted existing folder: {self.repo_name}")
                     except Exception as e:
-                        self.finished.emit(False, self.tr("Failed to delete existing folder: {error}").format(error=str(e)))
+                        self.finished.emit(False, f"Failed to delete existing folder: {str(e)}")
                         return
                 else:
                     # If not forcing update, emit failure message
-                    self.finished.emit(False, self.tr("Modpack folder '{repo_name}' already exists. Enable force update to overwrite.").format(repo_name=self.repo_name))
+                    self.finished.emit(False, f"Modpack folder '{self.repo_name}' already exists. Enable force update to overwrite.")
                     return
 
             if self.clone_url.endswith('.git'):
@@ -406,7 +367,7 @@ class ModpackDownloadWorker(QThread):
                 # Download the file (this part will still emit the success message)
                 response = requests.get(self.clone_url, stream=True)
                 if response.status_code != 200:
-                    self.finished.emit(False, self.tr("File download failed: HTTP status {response}.").format(response=response.status_code))
+                    self.finished.emit(False, f"File download failed: HTTP status {response.status_code}.")
                     return
 
                 total_size = int(response.headers.get('content-length', 0))
@@ -425,7 +386,7 @@ class ModpackDownloadWorker(QThread):
 
                 # Verify the file size after download
                 if downloaded_size != total_size:
-                    self.finished.emit(False, self.tr("File download failed: Incomplete file."))
+                    self.finished.emit(False, "File download failed: Incomplete file.")
                     return
 
                 # Unzip if necessary
@@ -435,14 +396,14 @@ class ModpackDownloadWorker(QThread):
                             zip_ref.extractall(self.repo_name)
                         os.remove(local_file_path)
                     except zipfile.BadZipFile:
-                        self.finished.emit(False, self.tr("File download failed: Corrupted ZIP file."))
+                        self.finished.emit(False, "File download failed: Corrupt ZIP file.")
                         return
 
                 # If file download succeeds, emit success
-                self.finished.emit(True, self.tr("Successfully downloaded {repo_name}.").format(repo_name=self.repo_name))
+                self.finished.emit(True, f"Successfully downloaded {self.repo_name}.")
 
         except Exception as e:
-            self.finished.emit(False, self.tr("An unexpected error occurred: {error}").format(error=str(e)))
+            self.finished.emit(False, f"An unexpected error occurred: {str(e)}")
 
     def read_git_output(self):
         """Capture real-time output from the Git process."""
@@ -459,14 +420,14 @@ class ModpackDownloadWorker(QThread):
         if self.process.exitCode() == 0 and self.process.error() == QProcess.ProcessError.UnknownError:
             # Success case: Repository should exist
             if os.path.exists(self.repo_name) and os.listdir(self.repo_name):
-                self.finished.emit(True, self.tr("Successfully downloaded {repo_name}.").format(repo_name=self.repo_name))
+                self.finished.emit(True, f"Successfully cloned {self.repo_name}.")
             else:
                 # Handle unexpected case where the repo doesn't exist after a 'successful' clone
-                self.finished.emit(False, self.tr("Download succeeded but the folder {repo_name} is empty. Please try again.").format(repo_name=self.repo_name))
+                self.finished.emit(False, f"Git clone succeeded but the folder {self.repo_name} is empty.")
         else:
             # Error case: Provide more detailed output
-            error_detail = error_msg if error_msg else (output if output else self.tr("An unknown error occurred."))
-            self.finished.emit(False, self.tr("Download failed: {error_detail}").format(error_detail=error_detail))
+            error_detail = error_msg if error_msg else (output if output else "An unknown error occurred.")
+            self.finished.emit(False, f"Git clone failed: {error_detail}")
 
         self.process.readyReadStandardOutput.connect(self.capture_stdout)
         self.process.readyReadStandardError.connect(self.capture_stderr)
@@ -540,7 +501,7 @@ class ModpackUpdateWorker(QThread):
     def run(self):
         try:
             if not os.path.exists(self.repo_path) or not os.path.isdir(self.repo_path):
-                self.finished.emit(False, self.tr("Invalid modpack path: {repo_path}").format(repo_path=self.repo_path))
+                self.finished.emit(False, f"Invalid repository path: {self.repo_path}")
                 return
 
             repo = Repo(self.repo_path)
@@ -548,39 +509,39 @@ class ModpackUpdateWorker(QThread):
             # Handle uncommitted changes
             try:
                 if repo.is_dirty(untracked_files=True):
-                    self.progress.emit(self.tr("Changes detected. Resetting and cleaning modpack..."))
+                    self.progress.emit("Uncommitted changes detected. Resetting and cleaning repository...")
                     repo.git.reset('--hard')  # Discard local changes
                     repo.git.clean('-fd')     # Remove untracked files and directories
             except GitCommandError as e:
-                self.finished.emit(False, self.tr("Error resetting modpack: {error}").format(error=str(e)))
+                self.finished.emit(False, f"Error resetting repository: {str(e)}")
                 return
 
             # Pull the latest changes
-            self.progress.emit(self.tr("Pulling latest changes..."))
+            self.progress.emit("Pulling latest changes...")
             try:
                 repo.remotes.origin.pull()
             except GitCommandError as e:
-                self.finished.emit(False, self.tr("Error pulling latest changes: {error}").format(error=str(e)))
+                self.finished.emit(False, f"Error pulling latest changes: {str(e)}")
                 return
 
             # Update submodules
-            self.progress.emit(self.tr("Updating mods..."))
+            self.progress.emit("Updating submodules...")
             try:
                 self.update_submodules(repo)
             except GitCommandError as e:
-                self.finished.emit(False, self.tr("Error updating mods: {error}").format(error=str(e)))
+                self.finished.emit(False, f"Error updating submodules: {str(e)}")
                 return
 
-            self.finished.emit(True, self.tr("Modpack updated successfully."))
+            self.finished.emit(True, "Modpack and submodules updated successfully.")
         except GitCommandError as e:
-            self.finished.emit(False, self.tr("Git error: {error}").format(error=str(e)))
+            self.finished.emit(False, f"Git error: {str(e)}")
         except Exception as e:
-            self.finished.emit(False, self.tr("Unexpected error: {error}").format(error=str(e)))
+            self.finished.emit(False, f"Unexpected error: {str(e)}")
 
     def update_submodules(self, repo):
         """Update all submodules recursively."""
         repo.git.submodule('update', '--init', '--recursive')
-        self.progress.emit(self.tr("Mods updated."))
+        self.progress.emit("Submodules updated.")
 
 ############################################################
 # Tutorial class
@@ -662,11 +623,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     
     def __init__(self, *args, **kwargs):
         super(ModpackManagerApp, self).__init__(*args, **kwargs)
-        self.setWindowTitle(self.tr("Dimserene's Modpack Manager"))
-
-        if not os.path.exists(TRANSLATIONS_FOLDER):
-            os.makedirs(TRANSLATIONS_FOLDER)
-            download_localization_files()
+        self.setWindowTitle("Dimserene's Modpack Manager")
 
         if not os.path.exists(LOGO_PATH):
             download_logo(LOGO_URL, LOGO_PATH)
@@ -677,7 +634,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         )
         self.splash = QSplashScreen(splash_pixmap, Qt.WindowType.WindowStaysOnTopHint)
         self.splash.showMessage(
-            self.tr("Loading Modpack Manager..."),
+            "Loading Modpack Manager...",
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignCenter,
             Qt.GlobalColor.black,
         )
@@ -694,7 +651,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Fetch modpack data with offline support
         self.modpack_data = fetch_modpack_data("https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json")
         if not self.modpack_data:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to load modpack data. Please check your internet connection."))
+            QMessageBox.critical(self, "Error", "Failed to load modpack data. Please check your internet connection.")
             self.modpack_data = {"modpack_categories": []}  # Use empty data as a fallback
 
         self.branch_data = {}        # Dictionary to store branches for each modpack
@@ -708,7 +665,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if data is not None:
             self.metadata = map_mods_to_metadata(data)  # Create metadata mapping
         else:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to load metadata. Ensure the CSV is accessible."))
+            QMessageBox.critical(self, "Error", "Failed to load metadata. Ensure the CSV is accessible.")
 
         # Load settings (either default or user preferences)
         self.settings = self.load_settings()
@@ -733,7 +690,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Proceed only if data is available
         if not self.modpack_data:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to load modpack data. Please check your internet connection."))
+            QMessageBox.critical(self, "Error", "Failed to load modpack data. Please check your internet connection.")
             return
 
         self.splash.finish(self)
@@ -745,48 +702,29 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.update_installed_info()  # Initial update
         self.check_for_updates()
 
+        # Backup interval in seconds (user set, example: 300 seconds -> 5 minutes)
+        self.backup_interval = 60  # Default backup interval
+        self.backup_timer = QTimer()
+        self.backup_timer.timeout.connect(self.perform_backup)
+        self.backup_timer.stop()
+        
+        # Load backup interval from settings (if exists)
+        self.backup_interval = self.settings.get("backup_interval", 60)
+
         # Create a reference to the worker thread
         self.worker = None
 
         self.tutorial_popup = None  # To track the active tutorial popup
         self.current_step = 0  # To track the current tutorial step
         self.tutorial_steps = [
-            (self.tr("Welcome to the Modpack Manager! Let's get started."), self),
-            (self.tr("↑ Use this dropdown to select the modpack."), self.modpack_var),
-            (self.tr("↑ Click Download/Update button to download or update the selected modpack."), self.download_button),
-            (self.tr("↑ Use Install button to copy the mod files."), self.install_button),
-            (self.tr("↑ Then click PLAY button to start the game."), self.play_button),
-            (self.tr("That's it! You are now ready to use the Modpack Manager."), self)
+            ("Welcome to the Modpack Manager! Let's get started.", self),
+            ("↑ Use this dropdown to select the modpack.", self.modpack_var),
+            ("↑ Click Download/Update button to download or update the selected modpack.", self.download_button),
+            ("↑ Use Install button to copy the mod files.", self.install_button),
+            ("↑ Then click PLAY button to start the game.", self.play_button),
+            ("That's it! You are now ready to use the Modpack Manager.", self)
         ]
-
-    def load_language(self, language_code):
-        """
-        Load translation file based on the language code.
-        """
-        if translator.load(f"{language_code}.qm", TRANSLATIONS_FOLDER):
-            app.installTranslator(translator)
-            print(f"Loaded language: {language_code}")
-        else:
-            print(f"Failed to load language: {language_code}")
-
-    def change_language(self, language):
-        if language == "English":
-            self.load_translation("en_US")
-        elif language == "Chinese":
-            self.load_translation("zh_TW")
-
-    def load_translation(self, locale):
-        if translator.load(os.path.join(TRANSLATIONS_FOLDER, f"{locale}.qm")):
-            QApplication.instance().installTranslator(translator)
-        else:
-            print(f"Translation file for {locale} not found.")
-
-    def tr(self, text):
-        """
-        Helper function to mark text for translation.
-        """
-        return app.translate("ModpackManager", text)
-        
+    
     def closeEvent(self, event):
         # Save the selected modpack when the window is closed
         selected_modpack = self.modpack_var.currentText()
@@ -804,13 +742,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """
         latest_version_str = self.modpack_data.get("latest_version", None)
         if not latest_version_str:
-            QMessageBox.warning(self, self.tr("Update Check"), self.tr("Could not fetch the latest version information."))
+            QMessageBox.warning(self, "Update Check", "Could not fetch the latest version information.")
             return
 
         try:
             latest_version = Version(latest_version_str)
         except ValueError:
-            QMessageBox.warning(self, self.tr("Update Check"), self.tr("Invalid version format: {latest_version_str}").format(latest_version_str=latest_version_str))
+            QMessageBox.warning(self, "Update Check", f"Invalid version format: {latest_version_str}")
             return
 
         if VERSION < latest_version:
@@ -823,8 +761,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Prompt the user to update if a new version is available."""
         response = QMessageBox.question(
             self,
-            self.tr("New Version Available"),
-            self.tr("A new version ({latest_version}) of the modpack is available.\n\nChangelog:\n{changelog}\n\nDo you want to download it?").format(latest_version=latest_version, changelog=changelog),
+            "New Version Available",
+            f"A new version ({latest_version}) of the modpack is available.\n\nChangelog:\n{changelog}\n\nDo you want to download it?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
@@ -862,7 +800,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             layout.setColumnStretch(i, 1)
 
         # Title label
-        self.title_label = QLabel(self.tr("☷☷☷Dimserene's Modpack Manager☷☷☷"), self)
+        self.title_label = QLabel("☷☷☷Dimserene's Modpack Manager☷☷☷", self)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.setStyleSheet("font: 16pt 'Helvetica';")
         layout.addWidget(self.title_label, 0, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -875,7 +813,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.breathing_phase = 0
 
         # PLAY button
-        self.play_button = QPushButton(self.tr("PLAY"), self)
+        self.play_button = QPushButton("PLAY", self)
 
         layout.addWidget(self.play_button, 1, 0, 1, 6)
         self.play_button.clicked.connect(self.play_game)
@@ -886,7 +824,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.addWidget(self.installed_info_label, 2, 0, 1, 6)
 
         # Refresh button
-        self.refresh_button = QPushButton(self.tr("Refresh"), self)
+        self.refresh_button = QPushButton("Refresh", self)
         self.refresh_button.setStyleSheet("font: 10pt 'Helvetica';")
         self.refresh_button.setToolTip("Refresh currently installed modpack information")
         self.refresh_button.clicked.connect(self.update_installed_info)
@@ -895,7 +833,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.addWidget(self.refresh_button, 3, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Modpack selection dropdown
-        self.modpack_label = QLabel(self.tr("Modpack:"), self)
+        self.modpack_label = QLabel("Modpack:", self)
         self.modpack_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.modpack_label, 4, 0, 1, 1)
 
@@ -920,11 +858,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.modpack_var.currentIndexChanged.connect(self.update_modpack_description)
 
         # Download button
-        self.download_button = QPushButton(self.tr("Download"), self)
+        self.download_button = QPushButton("Download", self)
         self.download_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.download_button, 6, 0, 1, 3)
         self.download_button.clicked.connect(lambda: self.download_modpack(main_window=self))
-        self.download_button.setToolTip(self.tr("Download (clone) selected modpack to the same directory as manager"))
+        self.download_button.setToolTip("Download (clone) selected modpack to the same directory as manager")
 
         # Assuming modpack_names is a list of available modpack names
         default_modpack = self.settings.get("default_modpack", "Dimserenes-Modpack")  # Get default modpack
@@ -946,77 +884,92 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.modpack_var.currentIndexChanged.connect(self.on_modpack_changed)
 
         # Quick Update button
-        self.update_button = QPushButton(self.tr("Quick Update"), self)
+        self.update_button = QPushButton("Quick Update", self)
         self.update_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.update_button, 6, 3, 1, 3)
         self.update_button.clicked.connect(self.update_modpack)
-        self.update_button.setToolTip(self.tr("Quickly update downloaded modpacks (can be malfunctioned)"))
+        self.update_button.setToolTip("Quickly update downloaded modpacks (can be malfunctioned)")
+
+        # # Multi-Download/Update button
+        # self.multi_download_button = QPushButton("Multi Mode", self)
+        # self.multi_download_button.setStyleSheet("font: 12pt 'Helvetica';")
+        # layout.addWidget(self.multi_download_button, 6, 4, 1, 2)
+        # self.multi_download_button.clicked.connect(self.open_multi_modpack_popup)
+        # self.multi_download_button.setToolTip("Download or update multiple modpacks at once")
 
         # Install button
-        self.install_button = QPushButton(self.tr("Install (Copy)"), self)
+        self.install_button = QPushButton("Install (Copy)", self)
         self.install_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.install_button, 7, 0, 1, 3)
         self.install_button.clicked.connect(self.install_modpack)
-        self.install_button.setToolTip(self.tr("Copy (install) Mods content"))
+        self.install_button.setToolTip("Copy (install) Mods content")
 
         # Uninstall button
-        self.uninstall_button = QPushButton(self.tr("Uninstall (Remove)"), self)
+        self.uninstall_button = QPushButton("Uninstall (Remove)", self)
         self.uninstall_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.uninstall_button, 7, 3, 1, 3)
         self.uninstall_button.clicked.connect(self.uninstall_modpack)
-        self.uninstall_button.setToolTip(self.tr("Delete Mods folder and its contents"))
+        self.uninstall_button.setToolTip("Delete Mods folder and its contents")
+
+        # # Time Travel button
+        # self.revert_button = QPushButton("Time Travel", self)
+        # self.revert_button.setStyleSheet("font: 10pt 'Helvetica';")
+        # layout.addWidget(self.revert_button, 8, 0, 1, 2)
+        # self.revert_button.clicked.connect(self.open_revert_popup)
+        # self.revert_button.setToolTip("Revert the modpack to a certain historical version")
 
         # Verify Integrity button
-        self.verify_button = QPushButton(self.tr("Verify Integrity"), self)
+        self.verify_button = QPushButton("Verify Integrity", self)
         self.verify_button.setStyleSheet("font: 10pt 'Helvetica';")
         layout.addWidget(self.verify_button, 8, 0, 1, 3)  # Adjust grid position as needed
         self.verify_button.clicked.connect(self.verify_modpack_integrity)
-        self.verify_button.setToolTip(self.tr("Check modpack for missing or incomplete files"))
+        self.verify_button.setToolTip("Check modpack for missing or incomplete files")
+
+        # Auto backup button
+        self.backup_button = QPushButton("Backup Save", self)
+        self.backup_button.setStyleSheet("font: 10pt 'Helvetica';")
+        layout.addWidget(self.backup_button, 8, 3, 1, 3)
+        self.backup_button.clicked.connect(self.auto_backup_popup)
+        self.backup_button.setToolTip("Automatically backup saves in set duration")
 
         # Check Versions button
-        self.check_versions_button = QPushButton(self.tr("Check Versions"), self)
+        self.check_versions_button = QPushButton("Check Versions", self)
         self.check_versions_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.check_versions_button, 8, 3, 1, 3)
+        layout.addWidget(self.check_versions_button, 9, 0, 1, 3)
         self.check_versions_button.clicked.connect(self.check_versions)
-        self.check_versions_button.setToolTip(self.tr("Check latest version for all modpacks"))
+        self.check_versions_button.setToolTip("Check latest version for all modpacks")
 
         # Install Lovely button
-        self.install_lovely_button = QPushButton(self.tr("Install/Update lovely"), self)
+        self.install_lovely_button = QPushButton("Install/Update lovely", self)
         self.install_lovely_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.install_lovely_button, 9, 0, 1, 3)
+        layout.addWidget(self.install_lovely_button, 9, 3, 1, 3)
         self.install_lovely_button.clicked.connect(self.install_lovely_injector)
-        self.install_lovely_button.setToolTip(self.tr("Install/update lovely injector"))
-
-        # Settings button
-        self.open_settings_button = QPushButton(self.tr("Settings"), self)
-        self.open_settings_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.open_settings_button, 9, 3, 1, 3)
-        self.open_settings_button.clicked.connect(self.open_settings_popup)
-        self.open_settings_button.setToolTip(self.tr("Settings"))
+        self.install_lovely_button.setToolTip("Install/update lovely injector")
 
         # Mod List button
-        self.mod_list_button = QPushButton(self.tr("Mod List"), self)
+        self.mod_list_button = QPushButton("Mod List", self)
         self.mod_list_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.mod_list_button, 10, 0, 1, 3)
+        layout.addWidget(self.mod_list_button, 10, 0, 1, 2)
         self.mod_list_button.clicked.connect(self.open_mod_list)
-        self.mod_list_button.setToolTip(self.tr("Open mod list in web browser"))
+        self.mod_list_button.setToolTip("Open mod list in web browser")
+
+        # Settings button
+        self.open_settings_button = QPushButton("Settings", self)
+        self.open_settings_button.setStyleSheet("font: 10pt 'Helvetica';")
+        layout.addWidget(self.open_settings_button, 10, 2, 1, 2)
+        self.open_settings_button.clicked.connect(self.open_settings_popup)
+        self.open_settings_button.setToolTip("Settings")
 
         # Discord button
-        self.discord_button = QPushButton(self.tr("Join Discord"), self)
+        self.discord_button = QPushButton("Join Discord", self)
         self.discord_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.discord_button, 10, 3, 1, 3)
+        layout.addWidget(self.discord_button, 10, 4, 1, 2)
         self.discord_button.clicked.connect(self.open_discord)
-        self.discord_button.setToolTip(self.tr("Open Discord server in web browser"))
-
-        # Language Selector
-        self.lang_selector = QComboBox()
-        self.lang_selector.addItems(["English", "Chinese"])
-        self.lang_selector.currentTextChanged.connect(self.change_language)
-        layout.addWidget(self.lang_selector,11, 0, 1, 1)
+        self.discord_button.setToolTip("Open Discord server in web browser")
 
         # QLabel acting as a clickable link
         self.tutorial_link = QLabel(self)
-        self.tutorial_link.setText(self.tr('<a href="#">Start Tutorial</a>')) # Set HTML for clickable text
+        self.tutorial_link.setText('<a href="#">Start Tutorial</a>')  # Set HTML for clickable text
         self.tutorial_link.setOpenExternalLinks(False)  # Disable default behavior of opening URLs
         self.tutorial_link.linkActivated.connect(self.start_tutorial)  # Connect to the tutorial method
         self.tutorial_link.setStyleSheet("""
@@ -1029,7 +982,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 color: #005ea0;  /* Change color on hover */
             }
         """)
-        layout.addWidget(self.tutorial_link, 11, 1, 1, 2)
+        layout.addWidget(self.tutorial_link, 11, 0, 1, 2)
 
         latest_version_str = self.modpack_data.get("latest_version", None)
 
@@ -1046,7 +999,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         else:
             version_style = "color: gray;"  # No version fetched
 
-        self.info = QLabel(self.tr("Build: {DATE}, Version: Release {VERSION}").format(DATE=DATE, ITERATION=ITERATION, VERSION=VERSION), self)
+        self.info = QLabel(f"Build: {DATE}, Iteration: {ITERATION}, Version: Release {VERSION}", self)
         self.info.setStyleSheet(f"font: 8pt 'Helvetica'; {version_style}")
         layout.addWidget(self.info, 11, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -1122,7 +1075,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         else:
             self.branch_var.clear()
             self.branch_var.setVisible(False)
-            QMessageBox.information(self, self.tr("Info"), self.tr("No branches available for {selected_modpack}.").format(selected_modpack=selected_modpack))
+            QMessageBox.information(self, "Info", f"No branches available for {selected_modpack}.")
 
 ############################################################
 # Foundation of tutorial
@@ -1171,8 +1124,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Information)
-        msg_box.setWindowTitle(self.tr("Tutorial Complete"))
-        msg_box.setText(self.tr("You have completed the tutorial!"))
+        msg_box.setWindowTitle("Tutorial Complete")
+        msg_box.setText("You have completed the tutorial!")
         msg_box.exec()
 
 ############################################################
@@ -1192,7 +1145,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Create a new popup window
         popup = QDialog(self)
-        popup.setWindowTitle(self.tr("Settings"))
+        popup.setWindowTitle("Settings")
 
         # Adjust default game directory based on OS
         default_game_dir = self.settings["game_directory"]
@@ -1208,35 +1161,35 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout = QGridLayout(popup)
 
         # Game Directory
-        self.game_directory_label = QLabel(self.tr("Game Directory:"), popup)
+        self.game_directory_label = QLabel("Game Directory:", popup)
         layout.addWidget(self.game_directory_label, 0, 0, 1, 2)
 
         game_dir_entry = QLineEdit(popup)
         game_dir_entry.setText(self.settings["game_directory"])
         layout.addWidget(game_dir_entry, 1, 0, 1, 2)
 
-        self.browse_game_directory_button = QPushButton(self.tr("Browse"), popup)
+        self.browse_game_directory_button = QPushButton("Browse", popup)
         self.browse_game_directory_button.clicked.connect(lambda: self.browse_directory(game_dir_entry, True))
         layout.addWidget(self.browse_game_directory_button, 2, 0)
 
-        self.open_game_directory_button = QPushButton(self.tr("Open"), popup)
+        self.open_game_directory_button = QPushButton("Open", popup)
         self.open_game_directory_button.clicked.connect(lambda: self.open_directory(game_dir_entry.text()))
         layout.addWidget(self.open_game_directory_button, 2, 1)
 
         # Mods Directory
-        self.mods_directory_label = QLabel(self.tr("Mods Directory:"), popup)
+        self.mods_directory_label = QLabel("Mods Directory:", popup)
         layout.addWidget(self.mods_directory_label, 3, 0, 1, 2)
 
         mods_dir_entry = QLineEdit(popup)
         mods_dir_entry.setText(os.path.expandvars(self.settings["mods_directory"]))
         layout.addWidget(mods_dir_entry, 4, 0, 1, 2)
 
-        self.open_mods_directory_button = QPushButton(self.tr("Open"), popup)
+        self.open_mods_directory_button = QPushButton("Open", popup)
         self.open_mods_directory_button.clicked.connect(lambda: self.open_directory(mods_dir_entry.text()))
         layout.addWidget(self.open_mods_directory_button, 5, 1)
 
         # Profile Name Label and Dropdown Menu
-        self.profile_name_label = QLabel(self.tr("Profile Name (Game Executive Name):"), popup)
+        self.profile_name_label = QLabel("Profile Name (Game Executive Name):", popup)
         layout.addWidget(self.profile_name_label, 6, 0, 1, 2)
 
         profile_name_var = QComboBox(popup)
@@ -1245,31 +1198,31 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         profile_name_var.setCurrentText(self.settings.get("profile_name", exe_files[0] if exe_files else "Balatro"))
         layout.addWidget(profile_name_var, 7, 0, 1, 2)
 
-        self.profile_name_set_button = QPushButton(self.tr("Set/Create"), popup)
+        self.profile_name_set_button = QPushButton("Set/Create", popup)
         self.profile_name_set_button.clicked.connect(lambda: self.set_profile_name(profile_name_var.currentText(), mods_dir_entry))
         layout.addWidget(self.profile_name_set_button, 8, 1)
 
         # # Add a checkbox for skipping mod selection screen
-        # self.skip_mod_selection_checkbox = QCheckBox(self.tr("Skip Mod Selection Screen (Install All Mods)"), popup)
+        # self.skip_mod_selection_checkbox = QCheckBox("Skip Mod Selection Screen (Install All Mods)", popup)
         # self.skip_mod_selection_checkbox.setChecked(self.settings.get("skip_mod_selection", False))
         # layout.addWidget(self.skip_mod_selection_checkbox, 9, 0, 1, 2)
 
         # # Add a checkbox for auto-install after download
-        # self.auto_install_checkbox = QCheckBox(self.tr("Install Modpack After Download/Update"), popup)
+        # self.auto_install_checkbox = QCheckBox("Install Modpack After Download/Update", popup)
         # self.auto_install_checkbox.setChecked(self.settings.get("auto_install_after_download", False))
         # layout.addWidget(self.auto_install_checkbox, 10, 0, 1, 2)
 
         # Reset to Default Button
-        self.default_button = QPushButton(self.tr("Reset to Default"), popup)
+        self.default_button = QPushButton("Reset to Default", popup)
         self.default_button.clicked.connect(lambda: self.reset_to_default(game_dir_entry, mods_dir_entry, profile_name_var))
         layout.addWidget(self.default_button, 16, 0, 1, 2)
 
         # Save and Cancel Buttons
-        self.save_settings_button = QPushButton(self.tr("Save"), popup)
+        self.save_settings_button = QPushButton("Save", popup)
         self.save_settings_button.clicked.connect(lambda: self.save_settings(popup, game_dir_entry.text(), mods_dir_entry.text(), profile_name_var.currentText(), self.modpack_var.currentText(), self.backup_interval))
         layout.addWidget(self.save_settings_button, 17, 0)
 
-        self.cancel_settings_button = QPushButton(self.tr("Exit"), popup)
+        self.cancel_settings_button = QPushButton("Exit", popup)
         self.cancel_settings_button.clicked.connect(lambda: popup.close())
 
         layout.addWidget(self.cancel_settings_button, 17, 1)
@@ -1323,7 +1276,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.load_settings()  # Reload the settings after saving
 
         except Exception as e:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save settings: {e}").format(e=e))
+            QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
 
         finally:
             if popup:
@@ -1348,7 +1301,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     # Function to browse and update the directory
     def browse_directory(self, entry_widget, readonly):
-        folder_selected = QFileDialog.getExistingDirectory(self, self.tr("Select Directory"))
+        folder_selected = QFileDialog.getExistingDirectory(self, "Select Directory")
         if folder_selected:
             # Update the entry with the selected folder path
             entry_widget.setText(folder_selected)
@@ -1377,8 +1330,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Show information message
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Information)
-                msg_box.setWindowTitle(self.tr("Info"))
-                msg_box.setText(self.tr("Directory did not exist, created: {expanded_path}").format(expanded_path=expanded_path))
+                msg_box.setWindowTitle("Info")
+                msg_box.setText(f"Directory did not exist, created: {expanded_path}")
                 msg_box.exec()
 
             # Platform-specific commands to open the directory
@@ -1392,9 +1345,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 print(f"Attempting to open directory on Linux: {expanded_path}")
                 subprocess.run(["xdg-open", expanded_path], check=True)
             else:
-                QMessageBox.critical(None, self.tr("Error"), self.tr("Unsupported operating system."))
+                QMessageBox.critical(None, "Error", "Unsupported operating system.")
         except Exception as e:
-            QMessageBox.critical(None, self.tr("Error"), self.tr("Failed to open directory:\n{expanded_path}\nError: {e}").format(expanded_path=expanded_path, e=e))
+            QMessageBox.critical(None, "Error", f"Failed to open directory:\n{expanded_path}\nError: {e}")
 
     def set_profile_name(self, profile_name, mods_dir_entry):
         """Set profile name and update mods directory and executable/app."""
@@ -1426,23 +1379,23 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if not os.path.exists(source_exe):
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Warning)
-                msg_box.setWindowTitle(self.tr("File Not Found"))
-                msg_box.setText(self.tr("{source_exe} not found in the game directory. Please choose a file to copy.").format(source_exe=os.path.basename(source_exe)))
+                msg_box.setWindowTitle("File Not Found")
+                msg_box.setText(f"{os.path.basename(source_exe)} not found in the game directory. Please choose a file to copy.")
                 msg_box.exec()
 
                 # Prompt the user to select an executable or app
                 chosen_file, _ = QFileDialog.getOpenFileName(
                     None, 
-                    self.tr("Select Executable") if system_platform != "Darwin" else self.tr("Select App"), 
+                    "Select Executable" if system_platform != "Darwin" else "Select App", 
                     "", 
-                    self.tr("Executable Files (*.exe)") if system_platform != "Darwin" else self.tr("App Bundles (*.app)")
+                    "Executable Files (*.exe)" if system_platform != "Darwin" else "App Bundles (*.app)"
                 )
 
                 if not chosen_file:  # If the user cancels the file selection
                     msg_box = QMessageBox()
                     msg_box.setIcon(QMessageBox.Icon.Information)
-                    msg_box.setWindowTitle(self.tr("Operation Cancelled"))
-                    msg_box.setText(self.tr("No file selected. Profile creation aborted."))
+                    msg_box.setWindowTitle("Operation Cancelled")
+                    msg_box.setText("No file selected. Profile creation aborted.")
                     msg_box.exec()
                     return  # Abort the operation if no file is selected
 
@@ -1458,16 +1411,16 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Information)
-                msg_box.setWindowTitle(self.tr("Success"))
-                msg_box.setText(self.tr("Profile file {destination_exe} created successfully!").format(destination_exe=os.path.basename(destination_exe)))
+                msg_box.setWindowTitle("Success")
+                msg_box.setText(f"Profile file {os.path.basename(destination_exe)} created successfully!")
                 msg_box.exec()
 
             except Exception as e:
                 # Display an error message if something goes wrong during the file copy process
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Critical)
-                msg_box.setWindowTitle(self.tr("Error"))
-                msg_box.setText(self.tr("Failed to create {destination_exe}: {error}").format(destination_exe=os.path.basename(destination_exe), error=str(e)))
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"Failed to create {os.path.basename(destination_exe)}: {str(e)}")
                 msg_box.exec()
 
     def get_exe_files(self, directory):
@@ -1487,18 +1440,263 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Handle the case when the directory is not found
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle(self.tr("Error"))
-            msg_box.setText(self.tr("Directory not found: {directory}").format(directory=directory))
+            msg_box.setWindowTitle("Error")
+            msg_box.setText(f"Directory not found: {directory}")
             msg_box.exec()
             return []
         except Exception as e:
             # Handle any unexpected errors
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle(self.tr("Error"))
-            msg_box.setText(self.tr("An unexpected error occurred: {e}").format(e=e))
+            msg_box.setWindowTitle("Error")
+            msg_box.setText(f"An unexpected error occurred: {e}")
             msg_box.exec()
             return []
+
+############################################################
+# Foundation of Backup popup and functions
+############################################################
+
+    def auto_backup_popup(self):
+
+        # Create a new popup window
+        popup = QDialog(self)
+        popup.setWindowTitle("Auto Backup Settings")
+
+        # Create the layout for the popup
+        layout = QVBoxLayout(popup)
+
+        # Add a label for interval setting
+        label = QLabel("Set the interval (in seconds) for automatic backups:", popup)
+        layout.addWidget(label)
+
+        # Add a spinbox for selecting the interval (in seconds)
+        interval_spinbox = QSpinBox(popup)
+        interval_spinbox.setMinimum(5)  # Minimum interval is 5 seconds
+        interval_spinbox.setMaximum(600)  # Maximum interval is 600 seconds (10 minutes)
+        interval_spinbox.setValue(self.backup_interval)  # Display current value in seconds
+        layout.addWidget(interval_spinbox)
+
+        # Add preset buttons for predefined intervals
+        preset_buttons_layout = QHBoxLayout()
+        preset_intervals = [5, 10, 30, 60, 120, 300, 600]
+
+        for interval in preset_intervals:
+            label = f"{interval} sec" if interval < 60 else f"{interval // 60} min"
+            preset_button = QPushButton(label, popup)
+            preset_button.clicked.connect(lambda _, i=interval: interval_spinbox.setValue(i))
+            preset_buttons_layout.addWidget(preset_button)
+
+        layout.addLayout(preset_buttons_layout)
+
+        # Add Horizontal Line (Separator)
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        line.setLineWidth(2)
+        layout.addWidget(line)
+
+        # Add a label for interval setting
+        label = QLabel("Choose which backup file to restore:", popup)
+        layout.addWidget(label)
+
+        # Backup dropdown with load button
+        backup_dropdown_layout = QHBoxLayout()
+        self.backup_dropdown = QComboBox(popup)  # Now an instance attribute
+        self.update_backup_dropdown(self.backup_dropdown)  # Populate the dropdown with existing backups
+        backup_dropdown_layout.addWidget(self.backup_dropdown)
+
+        # Add a Load button to refresh the dropdown
+        load_button = QPushButton("Load", popup)
+        load_button.clicked.connect(lambda: self.update_backup_dropdown(self.backup_dropdown))
+        backup_dropdown_layout.addWidget(load_button)
+
+        layout.addLayout(backup_dropdown_layout)
+
+        # Restore, delete all, and open folder buttons
+        button_layout = QHBoxLayout()
+        restore_button = QPushButton("Restore Backup", popup)
+        delete_all_button = QPushButton("Delete All", popup)
+        open_folder_button = QPushButton("Open Folder", popup)
+        button_layout.addWidget(restore_button)
+        button_layout.addWidget(delete_all_button)
+        button_layout.addWidget(open_folder_button)
+        layout.addLayout(button_layout)
+
+        # Start, stop, and cancel buttons
+        action_buttons_layout = QHBoxLayout()
+        start_button = QPushButton("Start", popup)
+        stop_button = QPushButton("Stop", popup)
+        cancel_button = QPushButton("Cancel", popup)
+        action_buttons_layout.addWidget(start_button)
+        action_buttons_layout.addWidget(stop_button)
+        action_buttons_layout.addWidget(cancel_button)
+        layout.addLayout(action_buttons_layout)
+
+        # Connect buttons to their respective functions
+        start_button.clicked.connect(lambda: self.start_auto_backup(interval_spinbox.value(), popup))
+        stop_button.clicked.connect(lambda: self.stop_auto_backup(popup))
+        cancel_button.clicked.connect(popup.close)
+        restore_button.clicked.connect(lambda: self.restore_backup(self.backup_dropdown.currentText()))  # Access backup_dropdown as instance attribute
+        delete_all_button.clicked.connect(self.delete_all_backups)
+        open_folder_button.clicked.connect(self.open_backup_folder)
+
+        popup.exec()
+
+    def start_auto_backup(self, interval, parent_widget):
+        """Start the automatic backup with user-defined intervals"""
+        self.backup_interval = interval
+        if not self.backup_timer.isActive():
+            print(f"Starting auto backup every {interval} seconds.")  # Debugging info
+            self.backup_timer.start(interval * 1000)  # Convert to milliseconds
+            # Notify user of backup start
+            QMessageBox.information(parent_widget, "Auto Backup", f"Auto backup started. Interval: {interval} seconds.")
+        else:
+            print("Backup timer is already active.")  # Debugging info
+
+    def stop_auto_backup(self, parent_widget):
+        """Stop the automatic backup"""
+        if self.backup_timer.isActive():
+            print("Stopping auto backup.")  # Debugging info
+            self.backup_timer.stop()
+            # Notify user of backup stop
+            QMessageBox.information(parent_widget, "Auto Backup", "Auto backup stopped.")
+        else:
+            print("Backup timer was not active.")  # Debugging info
+            QMessageBox.information(parent_widget, "Auto Backup", "Backup timer was not active.")
+
+    def get_backup_dir(self, macos=False):
+        """Get the backup directory path based on the platform."""
+        if macos:
+            return os.path.expanduser("~/Library/Application Support/Balatro/1/autosave")
+        return os.path.expandvars("%AppData%\\Balatro\\1\\autosave")
+
+    def get_save_file_path(self, macos=False):
+        """Get the save file path based on the platform."""
+        if macos:
+            return os.path.expanduser("~/Library/Application Support/Balatro/1/save.jkr")
+        return os.path.expandvars("%AppData%\\Balatro\\1\\save.jkr")
+
+    def perform_backup(self, macos=False):
+        """Perform the backup task."""
+        try:
+            # Define paths
+            save_file_path = self.get_save_file_path(macos)
+            backup_dir = self.get_backup_dir(macos)
+
+            # Ensure the backup directory exists
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+
+            # Create a timestamped backup file name
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            backup_file_name = f"save-{timestamp}.jkr"
+            backup_file_path = os.path.join(backup_dir, backup_file_name)
+
+            # Perform the file copy
+            shutil.copy2(save_file_path, backup_file_path)
+            print(f"Backup successful: {backup_file_path}")  # Debugging info
+
+        except Exception as e:
+            print(f"Backup failed: {str(e)}")  # Debugging info
+
+    def update_backup_dropdown(self, dropdown, macos=False):
+        """Update the dropdown with the list of backups."""
+        backup_dir = self.get_backup_dir(macos)
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        backup_files = sorted([f for f in os.listdir(backup_dir) if f.endswith(".jkr")])
+
+        dropdown.clear()
+        for backup in backup_files:
+            dropdown.addItem(backup)
+
+    def restore_backup(self, backup_file, macos=False):
+        """Backup the current save and restore the selected backup."""
+        try:
+            # Define paths
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            save_file_path = self.get_save_file_path(macos)
+            backup_dir = self.get_backup_dir(macos)
+            backup_file_path = os.path.join(backup_dir, backup_file)
+
+            # Backup current save.jkr as save.jkr.bk (if exists, suffix number)
+            backup_save_path = os.path.join(backup_dir, f"save-{timestamp}-bk.jkr")
+            counter = 1
+            while os.path.exists(backup_save_path):
+                backup_save_path = os.path.join(backup_dir, f"save-{timestamp}-bk-{counter}.jkr")
+                counter += 1
+
+            shutil.copy2(save_file_path, backup_save_path)
+            print(f"Current save backed up as: {backup_save_path}")
+
+            # Restore the selected backup
+            shutil.copy2(backup_file_path, save_file_path)
+            print(f"Backup {backup_file} restored to save.jkr")
+
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Information)
+            msg_box.setWindowTitle("Restore Complete")
+            msg_box.setText(f"Backup {backup_file} restored successfully.")
+            msg_box.exec()
+
+        except Exception as e:
+            print(f"Restore failed: {str(e)}")
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setWindowTitle("Restore Failed")
+            msg_box.setText(f"Failed to restore backup: {str(e)}")
+            msg_box.exec()
+
+    def delete_all_backups(self, macos=False):
+        """Delete all backup saves with a confirmation prompt."""
+        try:
+            # Prompt the user for confirmation
+            reply = QMessageBox.question(
+                self, 
+                "Confirm Deletion", 
+                "Are you sure you want to delete all backup saves?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+
+            # Check if the user clicked 'Yes'
+            if reply == QMessageBox.StandardButton.Yes:
+                backup_dir = self.get_backup_dir(macos)
+
+                for backup_file in os.listdir(backup_dir):
+                    file_path = os.path.join(backup_dir, backup_file)
+                    if os.path.isfile(file_path) and backup_file.endswith(".jkr"):
+                        os.remove(file_path)
+
+                print("All backups deleted.")
+                msg_box = QMessageBox()
+                msg_box.setIcon(QMessageBox.Icon.Information)
+                msg_box.setWindowTitle("Delete All")
+                msg_box.setText("All backups deleted successfully.")
+                msg_box.exec()
+
+                # Update the dropdown after deletion
+                self.update_backup_dropdown(self.backup_dropdown, macos)
+
+            else:
+                print("Deletion canceled.")
+        
+        except Exception as e:
+            print(f"Failed to delete backups: {str(e)}")
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setWindowTitle("Delete Failed")
+            msg_box.setText(f"Failed to delete backups: {str(e)}")
+            msg_box.exec()
+
+    def open_backup_folder(self, macos=False):
+        """Open the folder containing the backups."""
+        backup_dir = self.get_backup_dir(macos)
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        webbrowser.open(backup_dir)
 
 ############################################################
 # Top functions (Play, installed info, refresh)
@@ -1511,8 +1709,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not self.check_lovely_injector_installed():
             QMessageBox.warning(
                 self, 
-                self.tr("Cannot Launch Game"), 
-                self.tr("Lovely Injector is required to play the modded game. Launch aborted.")
+                "Cannot Launch Game", 
+                "Lovely Injector is required to play the modded game. Launch aborted."
             )
             return
 
@@ -1533,13 +1731,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     self.process = QProcess(self)
                     self.process.start(game_executable)
                 else:
-                    raise FileNotFoundError(self.tr("Game executable not found: {game_executable}").format(game_executable=game_executable))
+                    raise FileNotFoundError(f"Game executable not found: {game_executable}")
             except Exception as e:
                 # Display an error message if something goes wrong
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Critical)
-                msg_box.setWindowTitle(self.tr("Error"))
-                msg_box.setText(self.tr("Failed to launch game: {e}").format(e=e))
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"Failed to launch game: {e}")
                 msg_box.exec()
 
         elif system_platform == "Linux":
@@ -1561,8 +1759,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Display an error message if something goes wrong
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Critical)
-                msg_box.setWindowTitle(self.tr("Error"))
-                msg_box.setText(self.tr("Failed to launch game via Steam: {e}").format(e=e))
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"Failed to launch game via Steam: {e}")
                 msg_box.exec()
 
         elif system_platform == "Darwin":  # macOS
@@ -1577,8 +1775,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if not os.path.exists(lovely_script):
                 QMessageBox.critical(
                     self,
-                    self.tr("Error"),
-                    self.tr("The script 'run_lovely.sh' was not found in the expected location:\n{lovely_script}").format(lovely_script=lovely_script)
+                    "Error",
+                    f"The script 'run_lovely.sh' was not found in the expected location:\n{lovely_script}"
                 )
                 return
             
@@ -1590,8 +1788,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Unsupported platform
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle(self.tr("Unsupported Platform"))
-            msg_box.setText(self.tr("Your operating system is not supported for launching the game."))
+            msg_box.setWindowTitle("Unsupported Platform")
+            msg_box.setText("Your operating system is not supported for launching the game.")
             msg_box.exec()
 
 
@@ -1765,9 +1963,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Update installed info label with pack name and version
         info_text = (
-            self.tr("Installed pack: {pack_name} ({current_version})").format(pack_name=pack_name, current_version=current_version)
+            f"Installed pack: {pack_name} ({current_version})"
             if pack_name
-            else self.tr("No modpack installed or ModpackUtil mod removed.")
+            else "No modpack installed or ModpackUtil mod removed."
         )
         self.installed_info_label.setText(info_text)
         self.installed_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1798,7 +1996,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if modpack_info:
             self.description_label.setText(modpack_info['description'])
         else:
-            self.description_label.setText(self.tr("Description not available."))
+            self.description_label.setText("Description not available.")
 
 ############################################################
 # Middle functions (Download, install, update, uninstall)
@@ -1827,8 +2025,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         else:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle(self.tr("Error"))
-            msg_box.setText(self.tr("Invalid modpack selected."))
+            msg_box.setWindowTitle("Error")
+            msg_box.setText("Invalid modpack selected.")
             msg_box.exec()
 
     def download_modpack(self, main_window=None, clone_url=None):
@@ -1838,7 +2036,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         repo_url = clone_url or self.get_modpack_url(modpack_name)
 
         if not repo_url:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Invalid modpack URL."))
+            QMessageBox.critical(self, "Error", "Invalid modpack URL.")
             return
 
         # Define the full path for the repository
@@ -1849,8 +2047,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if os.path.exists(repo_path):
             response = QMessageBox.question(
                 self,
-                self.tr("Overwrite Existing Modpack"),
-                self.tr("The folder '{folder_name}' already exists. Do you want to overwrite it?").format(folder_name=folder_name),
+                "Overwrite Existing Modpack",
+                f"The folder '{folder_name}' already exists. Do you want to overwrite it?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if response == QMessageBox.StandardButton.No:
@@ -1861,7 +2059,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 shutil.rmtree(repo_path, onerror=readonly_handler)  # Remove the folder and its contents
                 print(f"Deleted existing folder: {repo_path}")
             except Exception as e:
-                QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to delete existing folder: {error}").format(error=str(e)))
+                QMessageBox.critical(self, "Error", f"Failed to delete existing folder: {str(e)}")
                 return
 
         # Ensure the Modpacks folder exists
@@ -1887,7 +2085,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(self.tr("Downloading {modpack_name}({selected_branch})...").format(modpack_name=modpack_name, selected_branch=selected_branch))  # Show the name of the modpack
+        label = QLabel(f"Downloading {modpack_name}({selected_branch})...")  # Show the name of the modpack
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
         label.setStyleSheet("""
             QLabel {
@@ -1924,7 +2122,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Show the result message (success or failure)
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Information if success else QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle(self.tr("Download Status") if success else self.tr("Error"))
+        msg_box.setWindowTitle("Download Status" if success else "Error")
         msg_box.setText(message)
         msg_box.exec()
 
@@ -1984,8 +2182,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if modpack_name == "Coonie's Modpack":
             QMessageBox.warning(
                 self,
-                self.tr("Incompatible Modpack"),
-                self.tr("This function is not compatible with Coonie's Modpack! Please use Download/Update instead.")
+                "Incompatible Modpack",
+                "This function is not compatible with Coonie's Modpack! Please use Download/Update instead."
             )
             return
 
@@ -1993,8 +2191,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not os.path.isdir(repo_path):
             QMessageBox.critical(
                 self,
-                self.tr("Error"),
-                self.tr("Repository not found in Modpacks folder. Attempting to clone it at {repo_path}.").format(repo_path=repo_path),
+                "Error",
+                f"Repository not found in Modpacks folder. Attempting to clone it at {repo_path}."
             )
             self.download_modpack(main_window=self, clone_url=repo_url)
             return
@@ -2019,7 +2217,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(self.tr("Updating {modpack_name}({selected_branch})...").format(modpack_name=modpack_name, selected_branch=selected_branch))  # Show the name of the modpack
+        label = QLabel(f"Updating {modpack_name}({selected_branch})...")  # Show the name of the modpack
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
         label.setStyleSheet("""
             QLabel {
@@ -2057,7 +2255,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Show the result message (success or failure)
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Information if success else QMessageBox.Icon.Critical)
-        msg_box.setWindowTitle(self.tr("Update Status") if success else self.tr("Error"))
+        msg_box.setWindowTitle("Update Status" if success else "Error")
         msg_box.setText(message)
         msg_box.exec()
 
@@ -2079,7 +2277,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         modpack_info = self.get_modpack_info(modpack_name)
 
         if not modpack_info:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Modpack information not found."))
+            QMessageBox.critical(self, "Error", "Modpack information not found.")
             return
 
         # Handle repository name and path
@@ -2106,8 +2304,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if not os.path.isdir(repo_path):
                 QMessageBox.critical(
                     self,
-                    self.tr("Error"),
-                    self.tr("Modpack {repo_path} does not exist. Please download first.").format(repo_path=repo_path),
+                    "Error",
+                    f"Modpack {repo_path} does not exist. Please download first.",
                 )
                 return
 
@@ -2115,8 +2313,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if not os.path.isdir(mods_src):
                 QMessageBox.critical(
                     self,
-                    self.tr("Error"),
-                    self.tr("Mods folder not found in the repository: {mods_src}. Please force download and try again.").format(mods_src=mods_src),
+                    "Error",
+                    f"Mods folder not found in the repository: {mods_src}. Please force download and try again.",
                 )
                 return
 
@@ -2135,8 +2333,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         except Exception as e:
             QMessageBox.critical(
                 self,
-                self.tr("Error"),
-                self.tr("An unexpected error occurred during installation: {error}").format(error=str(e)),
+                "Error",
+                f"An unexpected error occurred during installation: {str(e)}",
             )
 
     def get_mod_list(self, mods_src):
@@ -2145,8 +2343,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         except FileNotFoundError:
             QMessageBox.critical(
             self,
-            self.tr("Error"),
-            self.tr("Mods folder not found."),
+            "Error",
+            f"Mods folder not found.",
             )
             return []
         
@@ -2162,12 +2360,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Ensure metadata is available
         if not self.metadata:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Metadata for mods is not loaded. Please check your internet connection."))
+            QMessageBox.critical(self, "Error", "Metadata for mods is not loaded. Please check your internet connection.")
             return
 
         # Create a popup window for mod selection
         popup = QDialog(self)
-        popup.setWindowTitle(self.tr("Mod Selection"))
+        popup.setWindowTitle("Mod Selection")
 
         # Create a QSplitter to divide left (filters) and middle (mods) panels
         splitter = QSplitter(popup)
@@ -2187,15 +2385,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Search bar
         search_bar = QLineEdit(popup)
-        search_bar.setPlaceholderText(self.tr("Search mods..."))
+        search_bar.setPlaceholderText("Search mods...")
         left_layout.addWidget(search_bar)
 
         # Favorite mods filter
-        favorite_filter_checkbox = QCheckBox(self.tr("Show favorites"), popup)
+        favorite_filter_checkbox = QCheckBox("Show favorites", popup)
         left_layout.addWidget(favorite_filter_checkbox)
 
         # Genre filter section
-        genre_label = QLabel(self.tr("Genres"), popup)
+        genre_label = QLabel("Genres", popup)
         genre_label.setStyleSheet("font-weight: bold;")
         left_layout.addWidget(genre_label)
 
@@ -2206,7 +2404,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             genre_checkboxes.append(genre_checkbox)
 
         # Tags filter section
-        tags_label = QLabel(self.tr("Tags"), popup)
+        tags_label = QLabel("Tags (WIP)", popup)
         tags_label.setStyleSheet("font-weight: bold;")
         left_layout.addWidget(tags_label)
 
@@ -2240,21 +2438,21 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 if discord_url:
                     webbrowser.open(discord_url)
                 else:
-                    QMessageBox.information(mod_row_container, self.tr("Info"), self.tr("Discord link not available for this mod."))
+                    QMessageBox.information(mod_row_container, "Info", "Discord link not available for this mod.")
 
             def open_mod_page():
                 mod_page_url = metadata.get(mod, {}).get("Page Link", None)
                 if mod_page_url:
                     webbrowser.open(mod_page_url)
                 else:
-                    QMessageBox.information(mod_row_container, self.tr("Info"), self.tr("Mod page link not available for this mod."))
+                    QMessageBox.information(mod_row_container, "Info", "Mod page link not available for this mod.")
 
             # Add context menu to mod row
             def show_context_menu(event):
                 if event.button() == Qt.MouseButton.RightButton:
                     context_menu = QMenu(mod_row_container)
-                    discord_action = context_menu.addAction(self.tr("Visit Discord Channel"))
-                    github_action = context_menu.addAction(self.tr("Visit Mod Page"))
+                    discord_action = context_menu.addAction("Visit Discord Channel")
+                    github_action = context_menu.addAction("Visit Mod Page")
 
                     # Connect actions to their respective functions
                     discord_action.triggered.connect(open_discord)
@@ -2307,7 +2505,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             description = mod_metadata.get("Description", "No description available.")
             
             # Combine metadata into a tooltip text
-            tooltip_text = self.tr("<b>Genre:</b> {genre}<br><b>Tags:</b> {tags}<br><b>Description:</b> {description}").format(genre=genre, tags=tags, description=description)
+            tooltip_text = f"<b>Genre:</b> {genre}<br><b>Tags:</b> {tags}<br><b>Description:</b> {description}"
             
             # Set the tooltip for the checkbox
             mod_checkbox.setToolTip(tooltip_text)
@@ -2329,7 +2527,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         
-        right_label = QLabel(self.tr("Modpack Presets"), popup)
+        right_label = QLabel("Modpack Presets", popup)
         right_label.setStyleSheet("font-weight: bold;")
         right_layout.addWidget(right_label)
 
@@ -2339,15 +2537,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         right_layout.addWidget(self.presets_dropdown)
 
         # Buttons to manage presets
-        save_preset_button = QPushButton(self.tr("Save Preset"), popup)
+        save_preset_button = QPushButton("Save Preset", popup)
         save_preset_button.clicked.connect(lambda: self.save_preset(mod_vars))
         right_layout.addWidget(save_preset_button)
 
-        load_preset_button = QPushButton(self.tr("Load Preset"), popup)
+        load_preset_button = QPushButton("Load Preset", popup)
         load_preset_button.clicked.connect(lambda: self.load_preset(mod_vars))
         right_layout.addWidget(load_preset_button)
 
-        delete_preset_button = QPushButton(self.tr("Delete Preset"), popup)
+        delete_preset_button = QPushButton("Delete Preset", popup)
         delete_preset_button.clicked.connect(self.delete_preset)
         right_layout.addWidget(delete_preset_button)
 
@@ -2398,10 +2596,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Buttons for actions
         button_container = QWidget()
         button_layout = QHBoxLayout(button_container)
-        clear_button = QPushButton(self.tr("Clear All"), popup)
-        reverse_button = QPushButton(self.tr("Reverse Select"), popup)
-        feel_lucky_button = QPushButton(self.tr("I Feel Lucky"), popup)
-        save_button = QPushButton(self.tr("Save && Install"), popup)
+        clear_button = QPushButton("Clear All", popup)
+        reverse_button = QPushButton("Reverse Select", popup)
+        feel_lucky_button = QPushButton("I Feel Lucky", popup)
+        save_button = QPushButton("Save & Install", popup)
 
         clear_button.clicked.connect(lambda: [checkbox.setChecked(False) for _, _, checkbox, _ in mod_vars])
         reverse_button.clicked.connect(lambda: self.reverse_select_with_dependencies(mod_vars, dependencies))
@@ -2419,8 +2617,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         checkbox_layout = QHBoxLayout(checkbox_container)
 
         # Create the "Backup Mods Folder" and "Remove Mods Folder" checkboxes
-        self.backup_checkbox = QCheckBox(self.tr("Backup Mods Folder"), popup)
-        self.remove_checkbox = QCheckBox(self.tr("Remove Mods Folder"), popup)
+        self.backup_checkbox = QCheckBox("Backup Mods Folder", popup)
+        self.remove_checkbox = QCheckBox("Remove Mods Folder", popup)
 
         self.backup_checkbox.setChecked(self.settings.get("backup_mods", False))
         self.remove_checkbox.setChecked(self.settings.get("remove_mods", True))
@@ -2537,11 +2735,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             with open(FAVORITES_FILE, "w") as f:
                 json.dump([], f)  # Reset to an empty list
         except Exception as e:
-            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to reset favorite mods file. Error: {e}").format(e=str(e)))
+            QMessageBox.critical(self, "Error", f"Failed to reset favorite mods file. Error: {e}")
 
     def save_preset(self, mod_vars):
         """Save the current mod selection as a preset."""
-        preset_name, ok = QInputDialog.getText(self, self.tr("Save Preset"), self.tr("Enter a name for this preset:"))
+        preset_name, ok = QInputDialog.getText(self, "Save Preset", "Enter a name for this preset:")
         if not ok or not preset_name.strip():
             return
 
@@ -2551,20 +2749,20 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         presets[preset_name] = selected_mods
         self.write_presets(presets)
 
-        QMessageBox.information(self, self.tr("Preset Saved"), self.tr("Preset '{preset_name}' saved successfully.").format(preset_name=preset_name))
+        QMessageBox.information(self, "Preset Saved", f"Preset '{preset_name}' saved successfully.")
         self.update_presets_dropdown()
 
     def load_preset(self, mod_vars):
         """Load the selected preset and apply it to the mod selection."""
         preset_name = self.presets_dropdown.currentText()
         if not preset_name:
-            QMessageBox.warning(self, self.tr("Load Preset"), self.tr("No preset selected."))
+            QMessageBox.warning(self, "Load Preset", "No preset selected.")
             return
 
         presets = self.load_presets()
         selected_mods = presets.get(preset_name, [])
         if not selected_mods:
-            QMessageBox.warning(self, self.tr("Load Preset"), self.tr("Preset '{preset_name}' is empty or invalid.").format(preset_name=preset_name))
+            QMessageBox.warning(self, "Load Preset", f"Preset '{preset_name}' is empty or invalid.")
             return
 
         for _, mod, checkbox, _ in mod_vars:
@@ -2574,14 +2772,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Delete the selected preset."""
         preset_name = self.presets_dropdown.currentText()
         if not preset_name:
-            QMessageBox.warning(self, self.tr("Delete Preset"), self.tr("No preset selected."))
+            QMessageBox.warning(self, "Delete Preset", "No preset selected.")
             return
 
         presets = self.load_presets()
         if preset_name in presets:
             del presets[preset_name]
             self.write_presets(presets)
-            QMessageBox.information(self, self.tr("Preset Deleted"), self.tr("Preset '{preset_name}' deleted successfully.").format(preset_name=preset_name))
+            QMessageBox.information(self, "Preset Deleted", f"Preset '{preset_name}' deleted successfully.")
             self.update_presets_dropdown()
 
     def load_presets(self):
@@ -2655,12 +2853,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     shutil.move(mods_dir, backup_folder)
                     QMessageBox.information(
                         self, 
-                        self.tr("Backup Successful"), 
-                        self.tr("Mods folder successfully backed up to:\n{backup_folder}").format(backup_folder=backup_folder)
+                        "Backup Successful", 
+                        f"Mods folder successfully backed up to:\n{backup_folder}"
                     )
                 except Exception as e:
                     # Show error message if backup fails
-                    QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to backup Mods folder. Error: {error}").format(error=str(e)))
+                    QMessageBox.critical(self, "Error", f"Failed to backup Mods folder. Error: {str(e)}")
                     return
 
             # Remove existing mods folder if enabled
@@ -2678,8 +2876,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Warning message box
                 msg_box = QMessageBox()
                 msg_box.setIcon(QMessageBox.Icon.Warning)
-                msg_box.setWindowTitle(self.tr("Warning"))
-                msg_box.setText(self.tr("The current 'Mods' folder will be erased. Do you want to proceed?"))
+                msg_box.setWindowTitle("Warning")
+                msg_box.setText("The current 'Mods' folder will be erased. Do you want to proceed?")
                 msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
                 response = msg_box.exec()
 
@@ -2690,15 +2888,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     # Remove the Mods directory
                     if os.path.exists(mods_dir):
                         shutil.rmtree(mods_dir, ignore_errors=True)
-                        QMessageBox.information(self, self.tr("Success"), self.tr("The 'Mods' folder has been removed successfully."))
+                        QMessageBox.information(self, "Success", "The 'Mods' folder has been removed successfully.")
                     else:
-                        QMessageBox.warning(self, self.tr("Warning"), self.tr("The 'Mods' folder does not exist."))
+                        QMessageBox.warning(self, "Warning", "The 'Mods' folder does not exist.")
                 except Exception as e:
-                    QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to remove Mods folder. Error: {error}").format(error=str(e)))
+                    QMessageBox.critical(self, "Error", f"Failed to remove Mods folder. Error: {str(e)}")
 
         # Create a progress dialog
-        progress_dialog = QProgressDialog(self.tr("Installing mods..."), self.tr("Cancel"), 0, 100, self)
-        progress_dialog.setWindowTitle(self.tr("Installation Progress"))
+        progress_dialog = QProgressDialog("Installing mods...", "Cancel", 0, 100, self)
+        progress_dialog.setWindowTitle("Installation Progress")
         progress_dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
         progress_dialog.setMinimumDuration(0)
         progress_dialog.setValue(0)
@@ -2724,12 +2922,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Update progress dialog
                 progress_percentage = int((index / total_mods) * 100)
                 progress_dialog.setValue(progress_percentage)
-                progress_dialog.setLabelText(self.tr("Copying mod: {mod} ({index}/{total_mods})").format(mod=mod, index=index, total_mods=total_mods))
+                progress_dialog.setLabelText(f"Copying mod: {mod} ({index}/{total_mods})")
                 QApplication.processEvents()  # Keep the UI responsive
 
                 # Handle user cancellation
                 if progress_dialog.wasCanceled():
-                    QMessageBox.warning(self, self.tr("Installation Canceled"), self.tr("The installation process was canceled."))
+                    QMessageBox.warning(self, "Installation Canceled", "The installation process was canceled.")
                     return
 
                 # Perform the copy operation
@@ -2738,17 +2936,17 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                         shutil.rmtree(destination_mod_path)
                     shutil.copytree(source_mod_path, destination_mod_path)
                 except Exception as copy_error:
-                    QMessageBox.warning(self, self.tr("Copy Error"), self.tr("Failed to copy {mod}. Error: {copy_error}").format(mod=mod, copy_error=str(copy_error)))
+                    QMessageBox.warning(self, "Copy Error", f"Failed to copy {mod}. Error: {copy_error}")
 
             # Close the progress dialog
             progress_dialog.close()
 
             # Show installation success message
-            QMessageBox.information(self, self.tr("Install Status"), self.tr("Successfully installed modpack."))
+            QMessageBox.information(self, "Install Status", "Successfully installed modpack.")
 
         except Exception as e:
             progress_dialog.close()
-            QMessageBox.critical(self, self.tr("Error"), self.tr("An error occurred during installation: {error}").format(error=str(e)))
+            QMessageBox.critical(self, "Error", f"An error occurred during installation: {e}")
 
         finally:
             # Ensure mods_path is updated and debug folders are removed
@@ -2779,8 +2977,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Confirm the uninstallation
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Question)
-        msg_box.setWindowTitle(self.tr("Confirm Uninstallation"))
-        msg_box.setText(self.tr("Are you sure you want to uninstall the modpack? This action cannot be undone."))
+        msg_box.setWindowTitle("Confirm Uninstallation")
+        msg_box.setText("Are you sure you want to uninstall the modpack? This action cannot be undone.")
         msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
 
@@ -2793,22 +2991,22 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     # Show success message
                     success_box = QMessageBox()
                     success_box.setIcon(QMessageBox.Icon.Information)
-                    success_box.setWindowTitle(self.tr("Uninstall Status"))
-                    success_box.setText(self.tr("Modpack uninstalled successfully."))
+                    success_box.setWindowTitle("Uninstall Status")
+                    success_box.setText("Modpack uninstalled successfully.")
                     success_box.exec()
                 else:
                     # Show warning message
                     warning_box = QMessageBox()
                     warning_box.setIcon(QMessageBox.Icon.Warning)
-                    warning_box.setWindowTitle(self.tr("Uninstall Status"))
-                    warning_box.setText(self.tr("No modpack found to uninstall."))
+                    warning_box.setWindowTitle("Uninstall Status")
+                    warning_box.setText("No modpack found to uninstall.")
                     warning_box.exec()
             except Exception as e:
                 # Show error message
                 error_box = QMessageBox()
                 error_box.setIcon(QMessageBox.Icon.Critical)
-                error_box.setWindowTitle(self.tr("Error"))
-                error_box.setText(self.tr("An error occurred during uninstallation: {error}").format(error=str(e)))
+                error_box.setWindowTitle("Error")
+                error_box.setText(f"An error occurred during uninstallation: {str(e)}")
                 error_box.exec()
 
 ############################################################
@@ -2853,7 +3051,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         else:
             clone_url = self.get_modpack_url(modpack_name)
             if not clone_url:
-                QMessageBox.critical(self, self.tr("Error"), self.tr("URL not found for modpack '{modpack_name}'.").format(modpack_name=modpack_name))
+                QMessageBox.critical(self, "Error", f"URL not found for modpack '{modpack_name}'.")
                 return
             repo_name = clone_url.split('/')[-1].replace('.git', '')
 
@@ -2863,8 +3061,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not os.path.isdir(modpack_folder):
             QMessageBox.warning(
                 self,
-                self.tr("Mods Folder Not Found"),
-                self.tr("The 'Mods' folder for {modpack_name} was not found in '{modpack_folder}'.").format(modpack_name=modpack_name, modpack_folder=modpack_folder),
+                "Mods Folder Not Found",
+                f"The 'Mods' folder for {modpack_name} was not found in '{modpack_folder}'.",
             )
             return
 
@@ -2876,14 +3074,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             folder_list = "\n".join(empty_or_git_only_folders)
             QMessageBox.information(
                 self,
-                self.tr("Verification Result"),
-                self.tr("The following mods are not downloaded correctly. Please attempt redownload:\n\n{folder_list}").format(folder_list=folder_list),
+                "Verification Result",
+                f"The following mods are not downloaded correctly. Please attempt reclone:\n\n{folder_list}",
             )
         else:
             QMessageBox.information(
                 self,
-                self.tr("Verification Complete"),
-                self.tr("All folders in the 'Mods' folder for {modpack_name} are properly populated.").format(modpack_name=modpack_name),
+                "Verification Complete",
+                f"All folders in the 'Mods' folder for {modpack_name} are properly populated.",
             )
 
     def check_versions(self):
@@ -2895,35 +3093,35 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             coonies_version_info = self.get_latest_coonies_tag()
             
             # Prepare version information using HTML for better formatting
-            version_info = self.tr("""
+            version_info = """
             <h3>Modpack Versions:</h3>
             <ul>
-            """)
+            """
             for repo_name, commit_message in commit_messages.items():
                 # Replace newlines in commit_message with <br> for HTML formatting
                 commit_message_html = commit_message.replace("\n", "<br>")
                 version_info += f"<li><b>{repo_name}</b>:<br>{commit_message_html}</li>"
             
-            version_info += self.tr("""
+            version_info += f"""
             </ul>
             <h3>Coonie's Modpack Version:</h3>
             <p><b>Release:</b> {coonies_version_info}</p>
-            """).format(coonies_version_info=coonies_version_info)
+            """
 
             # Display the version and update information
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Information)
-            msg_box.setWindowTitle(self.tr("Version Information"))
+            msg_box.setWindowTitle("Version Information")
             msg_box.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for HTML
             msg_box.setText(version_info)
             msg_box.exec()
 
         except Exception as e:
             # Handle errors and display them in a critical message box
-            error_msg = self.tr("An error occurred while checking versions:\n{error}").format(error=str(e))
+            error_msg = f"An error occurred while checking versions:\n{str(e)}"
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle(self.tr("Error"))
+            msg_box.setWindowTitle("Error")
             msg_box.setText(error_msg)
             msg_box.exec()
 
@@ -2960,7 +3158,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 else:
                     return "No tags found"
             else:
-                raise Exception(self.tr("GitHub API request failed with status code {status_code}").format(status_code=response.status_code))
+                raise Exception(f"GitHub API request failed with status code {response.status_code}")
         except Exception as e:
             print(f"Error fetching latest tag for Coonie's Modpack: {e}")
             return "Unknown"
@@ -2969,8 +3167,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Prompt user to confirm the installation
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Question)
-        msg_box.setWindowTitle(self.tr("Install Lovely Injector"))
-        msg_box.setText(self.tr("This installation requires disabling antivirus software temporarily and whitelisting the Balatro game directory. Proceed?"))
+        msg_box.setWindowTitle("Install Lovely Injector")
+        msg_box.setText("This installation requires disabling antivirus software temporarily and whitelisting the Balatro game directory. Proceed?")
         msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
         
@@ -3013,8 +3211,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not os.path.exists(game_path):
             warning_box = QMessageBox()
             warning_box.setIcon(QMessageBox.Icon.Warning)
-            warning_box.setWindowTitle(self.tr("Warning"))
-            warning_box.setText(self.tr("Game executable not found in the default directory. Please specify it in settings."))
+            warning_box.setWindowTitle("Warning")
+            warning_box.setText("Game executable not found in the default directory. Please specify it in settings.")
             warning_box.exec()
             return
 
@@ -3037,26 +3235,26 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Verify extracted files
             missing_files = [f for f in extracted_files if not os.path.exists(os.path.join(game_dir, f))]
             if missing_files:
-                raise FileNotFoundError("Missing files after extraction: {', '.join(missing_files)}")
+                raise FileNotFoundError(f"Missing files after extraction: {', '.join(missing_files)}")
 
             os.remove(archive_path)  # Clean up
 
             success_box = QMessageBox()
             success_box.setIcon(QMessageBox.Icon.Information)
-            success_box.setWindowTitle(self.tr("Install Status"))
-            success_box.setText(self.tr("Lovely Injector installed successfully."))
+            success_box.setWindowTitle("Install Status")
+            success_box.setText("Lovely Injector installed successfully.")
             success_box.exec()
 
         except requests.RequestException as e:
-            QMessageBox.critical(None, self.tr("Error"), self.tr("Failed to download Lovely Injector: {error}").format(error=str(e)))
+            QMessageBox.critical(None, "Error", f"Failed to download Lovely Injector: {e}")
             if os.path.exists(archive_path):
                 os.remove(archive_path)
         except (zipfile.BadZipFile, tarfile.TarError) as e:
-            QMessageBox.critical(None, self.tr("Error"), self.tr("Failed to extract the archive: {error}").format(error=str(e)))
+            QMessageBox.critical(None, "Error", f"Failed to extract the archive: {e}")
             if os.path.exists(archive_path):
                 os.remove(archive_path)
         except Exception as e:
-            QMessageBox.critical(None, self.tr("Error"), self.tr("An unexpected error occurred during installation: {error}").format(error=str(e)))
+            QMessageBox.critical(None, "Error", f"An unexpected error occurred during installation: {str(e)}")
 
     def check_lovely_injector_installed(self):
         """Check if Lovely Injector is installed and prompt the user to install if not."""
@@ -3072,10 +3270,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not os.path.exists(lovely_path):
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Question)
-            msg_box.setWindowTitle(self.tr("Lovely Injector Not Found"))
+            msg_box.setWindowTitle("Lovely Injector Not Found")
             msg_box.setText(
-                self.tr("Lovely Injector is not installed. It is required for the game to function properly.\n"
-                "Would you like to install it now?")
+                "Lovely Injector is not installed. It is required for the game to function properly.\n"
+                "Would you like to install it now?"
             )
             msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             msg_box.setDefaultButton(QMessageBox.StandardButton.Yes)
@@ -3088,8 +3286,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 else:
                     QMessageBox.critical(
                         None,
-                        self.tr("Error"),
-                        self.tr("Lovely Injector installation failed. Please try again or check your settings."),
+                        "Error",
+                        "Lovely Injector installation failed. Please try again or check your settings.",
                     )
                     return False
             else:
@@ -3100,7 +3298,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def open_discord(self):
         # Check if the user has already joined the official Discord
-        webbrowser.open("https://discord.gg/vUcg8UY8rZ")
+        webbrowser.open("https://discord.com/invite/balatro")
+        webbrowser.open("https://discord.com/channels/1116389027176787968/1255696773599592458")
 
     def open_mod_list(self): 
         webbrowser.open("https://docs.google.com/spreadsheets/d/1L2wPG5mNI-ZBSW_ta__L9EcfAw-arKrXXVD-43eU4og")
