@@ -28,7 +28,6 @@
     "Vultbines_Joker": ["Fusion-Jokers"],
     "Zone-Balatro": ["Talisman"]
   },
-
   "modpack_categories": [
     {
       "category": "Dimserene",
@@ -36,11 +35,8 @@
         {
           "name": "Dimserenes-Modpack",
           "url": "https://github.com/Dimserene/Dimserenes-Modpack.git",
-          "branches": ["main", "Talisman"],
-          "description": {
-            "main": "A full-featured modpack including as many mods as possible.",
-            "Talisman": "A branch modpack of full with a focus on Talisman and its expansions."
-          }
+          "description": "A full-featured modpack including as many mods as possible.",
+          "branches": ["main", "Talisman"]
         },
         {
           "name": "Fine-tuned-Pack",
