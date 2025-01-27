@@ -36,8 +36,11 @@
         {
           "name": "Dimserenes-Modpack",
           "url": "https://github.com/Dimserene/Dimserenes-Modpack.git",
-          "description": "A full-featured modpack including as many mods as possible.",
-          "branches": ["main", "Talisman"]
+          "branches": ["main", "Talisman"],
+          "description": {
+            "main": "A full-featured modpack including as many mods as possible.",
+            "Talisman": "A branch modpack of full with a focus on Talisman and its expansions."
+          }
         },
         {
           "name": "Fine-tuned-Pack",

@@ -2085,13 +2085,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(f"Downloading {modpack_name}({selected_branch})...")  # Show the name of the modpack
+        label = QLabel(f"Downloading {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
-        label.setStyleSheet("""
-            QLabel {
-                background-color: transparent;
-            }
-        """)
 
         # Create a layout for the dialog and add the label
         layout = QVBoxLayout(self.progress_dialog)
@@ -2217,13 +2212,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(f"Updating {modpack_name}({selected_branch})...")  # Show the name of the modpack
+        label = QLabel(f"Updating {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
-        label.setStyleSheet("""
-            QLabel {
-                background-color: transparent;
-            }
-        """)
 
         # Create a layout for the dialog and add the label
         layout = QVBoxLayout(self.progress_dialog)
