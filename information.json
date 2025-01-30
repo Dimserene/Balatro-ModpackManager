@@ -1,6 +1,6 @@
 {
   "latest_version": "1.8.2",
-  
+
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
   "changelog": "- Fixed presets not reading.\n- Fixed customized game directory not registered by manager.",
   "dependencies": {
@@ -58,7 +58,7 @@
         {
           "name": "Experimental-Pack",
           "url": "https://github.com/Dimserene/Experimental-Pack.git",
-          "description": "Contains relatively new mods, for fresh new features and concepts."
+          "description": "Contains relatively new and experimental mods, for fresh new features and concepts."
         }
       ]
     }
