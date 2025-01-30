@@ -719,15 +719,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.update_installed_info()  # Initial update
         self.check_for_updates()
 
-        # Backup interval in seconds (user set, example: 300 seconds -> 5 minutes)
-        self.backup_interval = 60  # Default backup interval
-        self.backup_timer = QTimer()
-        self.backup_timer.timeout.connect(self.perform_backup)
-        self.backup_timer.stop()
-        
-        # Load backup interval from settings (if exists)
-        self.backup_interval = self.settings.get("backup_interval", 60)
-
         # Create a reference to the worker thread
         self.worker = None
 
@@ -907,13 +898,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.update_button.clicked.connect(self.update_modpack)
         self.update_button.setToolTip("Quickly update downloaded modpacks (can be malfunctioned)")
 
-        # # Multi-Download/Update button
-        # self.multi_download_button = QPushButton("Multi Mode", self)
-        # self.multi_download_button.setStyleSheet("font: 12pt 'Helvetica';")
-        # layout.addWidget(self.multi_download_button, 6, 4, 1, 2)
-        # self.multi_download_button.clicked.connect(self.open_multi_modpack_popup)
-        # self.multi_download_button.setToolTip("Download or update multiple modpacks at once")
-
         # Install button
         self.install_button = QPushButton("Install (Copy)", self)
         self.install_button.setStyleSheet("font: 12pt 'Helvetica';")
@@ -928,13 +912,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.uninstall_button.clicked.connect(self.uninstall_modpack)
         self.uninstall_button.setToolTip("Delete Mods folder and its contents")
 
-        # # Time Travel button
-        # self.revert_button = QPushButton("Time Travel", self)
-        # self.revert_button.setStyleSheet("font: 10pt 'Helvetica';")
-        # layout.addWidget(self.revert_button, 8, 0, 1, 2)
-        # self.revert_button.clicked.connect(self.open_revert_popup)
-        # self.revert_button.setToolTip("Revert the modpack to a certain historical version")
-
         # Verify Integrity button
         self.verify_button = QPushButton("Verify Integrity", self)
         self.verify_button.setStyleSheet("font: 10pt 'Helvetica';")
@@ -942,45 +919,38 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.verify_button.clicked.connect(self.verify_modpack_integrity)
         self.verify_button.setToolTip("Check modpack for missing or incomplete files")
 
-        # Auto backup button
-        self.backup_button = QPushButton("Backup Save", self)
-        self.backup_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.backup_button, 8, 3, 1, 3)
-        self.backup_button.clicked.connect(self.auto_backup_popup)
-        self.backup_button.setToolTip("Automatically backup saves in set duration")
-
         # Check Versions button
         self.check_versions_button = QPushButton("Check Versions", self)
         self.check_versions_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.check_versions_button, 9, 0, 1, 3)
+        layout.addWidget(self.check_versions_button, 8, 3, 1, 3)
         self.check_versions_button.clicked.connect(self.check_versions)
         self.check_versions_button.setToolTip("Check latest version for all modpacks")
 
         # Install Lovely button
         self.install_lovely_button = QPushButton("Install/Update lovely", self)
         self.install_lovely_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.install_lovely_button, 9, 3, 1, 3)
+        layout.addWidget(self.install_lovely_button, 9, 0, 1, 3)
         self.install_lovely_button.clicked.connect(self.install_lovely_injector)
         self.install_lovely_button.setToolTip("Install/update lovely injector")
-
-        # Mod List button
-        self.mod_list_button = QPushButton("Mod List", self)
-        self.mod_list_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.mod_list_button, 10, 0, 1, 2)
-        self.mod_list_button.clicked.connect(self.open_mod_list)
-        self.mod_list_button.setToolTip("Open mod list in web browser")
 
         # Settings button
         self.open_settings_button = QPushButton("Settings", self)
         self.open_settings_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.open_settings_button, 10, 2, 1, 2)
+        layout.addWidget(self.open_settings_button, 9, 3, 1, 3)
         self.open_settings_button.clicked.connect(self.open_settings_popup)
         self.open_settings_button.setToolTip("Settings")
+
+        # Mod List button
+        self.mod_list_button = QPushButton("Mod List", self)
+        self.mod_list_button.setStyleSheet("font: 10pt 'Helvetica';")
+        layout.addWidget(self.mod_list_button, 10, 0, 1, 3)
+        self.mod_list_button.clicked.connect(self.open_mod_list)
+        self.mod_list_button.setToolTip("Open mod list in web browser")
 
         # Discord button
         self.discord_button = QPushButton("Join Discord", self)
         self.discord_button.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.discord_button, 10, 4, 1, 2)
+        layout.addWidget(self.discord_button, 10, 3, 1, 3)
         self.discord_button.clicked.connect(self.open_discord)
         self.discord_button.setToolTip("Open Discord server in web browser")
 
@@ -1010,7 +980,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 if VERSION > latest_version:
                     version_style = "color: red;"  # Local version is greater
                 else:
-                    version_style = "color: black;"  # Default style
+                    version_style = "color: white;"  # Default style
             except ValueError:
                 version_style = "color: orange;"  # Invalid version format
         else:
@@ -1038,19 +1008,28 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.settings["default_modpack"] = selected_modpack
 
     def update_color(self):
-        # Calculate the breathing effect (sinusoidal pattern)
-        self.breathing_phase += 0.005  # 10x slower change
-        intensity = (math.sin(self.breathing_phase) + 1) / 2  # Value between 0 and 1
+        """Smooth breathing effect with a full-spectrum rainbow color transition."""
+        # Adjust breathing phase for a smooth transition
+        self.breathing_phase += 0.003  # Slower transition for a smoother effect
 
-        # Create a dimmer rainbow color effect based on phase, starting from black
-        red = int(63 * intensity * (math.sin(self.breathing_phase) + 1))  # Dimmer colors (0-127)
-        green = int(63 * intensity * (math.sin(self.breathing_phase + 2 * math.pi / 3) + 1))
-        blue = int(63 * intensity * (math.sin(self.breathing_phase + 4 * math.pi / 3) + 1))
+        # Calculate intensity (sinusoidal breathing effect)
+        intensity = (math.sin(self.breathing_phase) + 1) / 2  # Normalize between 0 and 1
 
+        # Compute RGB values using a full-spectrum rainbow pattern
+        red = int(255 * (math.sin(self.breathing_phase) + 1) / 2)  
+        green = int(255 * (math.sin(self.breathing_phase + 2 * math.pi / 3) + 1) / 2)
+        blue = int(255 * (math.sin(self.breathing_phase + 4 * math.pi / 3) + 1) / 2)
+
+        # Ensure RGB values are clamped within (0-255)
+        red = max(0, min(255, red))
+        green = max(0, min(255, green))
+        blue = max(0, min(255, blue))
+
+        # Convert color to hex format
         color = QColor(red, green, blue)
         color_hex = color.name()
 
-        # Update label's color without changing font size
+        # Apply color to title label
         self.title_label.setStyleSheet(
             f"font: 16pt 'Helvetica'; "
             f"color: {color_hex};"
@@ -1145,15 +1124,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 ############################################################
 
     def open_settings_popup(self):
-        # Reload settings whenever the settings popup appears
-        self.settings = self.load_settings()
-
         # Prevent opening multiple settings popups
         if self.settings_popup_open:
             return
 
         # Mark the settings popup as open
         self.settings_popup_open = True
+
+        # Reload settings whenever the settings popup appears
+        self.settings = self.load_settings()
 
         # Create a new popup window
         popup = QDialog(self)
@@ -1174,7 +1153,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 padding: 6px;
             }
             QTabBar::tab {
-                color: black;
+                color: white;
                 padding: 6px 14px;
                 border: 1px solid #aaa;
                 margin-right: 4px;
@@ -1198,34 +1177,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         installation_tab = self.create_installation_tab()
 
         tab_widget.addTab(general_tab, "⚙ General")
-        tab_widget.addTab(installation_tab, "📂 Installation")
-
-        # Save & Exit buttons
-        button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
-        cancel_button = QPushButton("Exit")
-
-        save_button.setFixedSize(130, 36)
-        cancel_button.setFixedSize(130, 36)
-
-        save_button.clicked.connect(
-            lambda: self.save_settings(
-                popup, 
-                self.game_dir_entry.text(), 
-                self.mods_dir_entry.text(), 
-                self.profile_name_var.currentText(), 
-                self.modpack_var.currentText()
-                )
-            )
-        cancel_button.clicked.connect(popup.close)
-
-        button_layout.addWidget(save_button)
-        button_layout.addWidget(cancel_button)
+        tab_widget.addTab(installation_tab, "🔧 Installation")
 
         # Main Layout
         main_layout = QVBoxLayout(popup)
         main_layout.addWidget(tab_widget)
-        main_layout.addLayout(button_layout)
         popup.setLayout(main_layout)
 
         popup.finished.connect(lambda: setattr(self, "settings_popup_open", False))
@@ -1252,12 +1208,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.game_dir_entry.setFixedHeight(30)
         self.game_dir_entry.setStyleSheet("""
             QLineEdit {
-                background-color: #f7f7f7;
+                background-color: #222222;
                 border: 1px solid #999;
                 padding: 4px;
                 font-size: 10pt;
             }
         """)
+        
+        self.game_dir_entry.textChanged.connect(lambda: self.save_settings(game_directory=self.game_dir_entry.text()))
+
         default_game_dir_button = QPushButton("Default")
         default_game_dir_button.setFixedSize(70, 30)
         default_game_dir_button.clicked.connect(lambda: self.reset_to_default(self.game_dir_entry))
@@ -1291,7 +1250,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.mods_dir_entry.setFixedHeight(30)
         self.mods_dir_entry.setStyleSheet("""
             QLineEdit {
-                background-color: #f7f7f7;
+                background-color: #222222;
                 border: 1px solid #999;
                 padding: 4px;
                 font-size: 10pt;
@@ -1320,7 +1279,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             QComboBox {
                 padding: 6px;
                 font-size: 10pt;
-                background-color: #f7f7f7;
+                background-color: #222222;
             }
         """)
 
@@ -1351,23 +1310,76 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Always create new checkboxes when opening settings
         self.backup_checkbox = QCheckBox("Backup Mods Folder")
         self.backup_checkbox.setChecked(self.settings.get("backup_mods", False))
+        self.backup_checkbox.stateChanged.connect(self.update_descriptions)
+
+        self.backup_description = QLabel()
 
         self.remove_checkbox = QCheckBox("Remove Mods Folder")
         self.remove_checkbox.setChecked(self.settings.get("remove_mods", True))
+        self.remove_checkbox.stateChanged.connect(self.update_descriptions)
+
+        self.remove_description = QLabel()
 
         self.auto_install_checkbox = QCheckBox("Install Mods After Download / Update")
         self.auto_install_checkbox.setChecked(self.settings.get("auto_install", False))
+        self.auto_install_checkbox.stateChanged.connect(self.update_descriptions)
+
+        self.auto_install_description = QLabel()
 
         self.skip_mod_selection_checkbox = QCheckBox("Skip Mod Selection")
         self.skip_mod_selection_checkbox.setChecked(self.settings.get("skip_mod_selection", False))
+        self.skip_mod_selection_checkbox.stateChanged.connect(self.update_descriptions)
+
+        self.skip_mod_selection_description = QLabel()
+
+        # 🔹 Call `update_descriptions()` immediately to set initial values
+        self.update_descriptions()
 
         layout.addWidget(self.backup_checkbox)
+        layout.addWidget(self.backup_description)
         layout.addWidget(self.remove_checkbox)
+        layout.addWidget(self.remove_description)
         layout.addWidget(self.auto_install_checkbox)
+        layout.addWidget(self.auto_install_description)
         layout.addWidget(self.skip_mod_selection_checkbox)
+        layout.addWidget(self.skip_mod_selection_description)
 
         tab.setLayout(layout)
         return tab
+    
+    def update_descriptions(self):
+        """Dynamically update descriptions based on checkbox states."""
+        if hasattr(self, "backup_description"):
+            self.backup_description.setText(
+                "\tCreate a backup of the Mods folder before installing mods.\n" if self.backup_checkbox.isChecked()
+                else "\tDon't create a backup of the Mods folder before installing mods.\n"
+            )
+
+        if hasattr(self, "remove_description"):
+            self.remove_description.setText(
+                "\tRemove the Mods folder before installing mods.\n" if self.remove_checkbox.isChecked()
+                else "\tKeep the Mods folder before installing mods.\n"
+            )
+
+        if hasattr(self, "auto_install_description"):
+            self.auto_install_description.setText(
+                "\tAutomatically install mods after downloading or updating.\n" if self.auto_install_checkbox.isChecked()
+                else "\tManually install mods after downloading or updating.\n"
+            )
+
+        if hasattr(self, "skip_mod_selection_description"):
+            self.skip_mod_selection_description.setText(
+                "\tSkip the mods selection dialog and install all mods automatically.\n" if self.skip_mod_selection_checkbox.isChecked()
+                else "\tManually select mods to install.\n"
+            )
+
+        # Automatically save settings whenever a checkbox is toggled
+        self.save_settings(
+            backup_mods=self.backup_checkbox.isChecked(),
+            remove_mods=self.remove_checkbox.isChecked(),
+            auto_install=self.auto_install_checkbox.isChecked(),
+            skip_mod_selection=self.skip_mod_selection_checkbox.isChecked()
+        )
 
 ############################################################
 # Read and load user preferences
@@ -1381,11 +1393,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         except (FileNotFoundError, json.JSONDecodeError):
             return DEFAULT_SETTINGS.copy()
 
-    # Function to save settings to the JSON file
-    def save_settings(self, popup=None, game_directory=None, mods_directory=None, profile_name=None, default_modpack=None):
-        """Save settings to the JSON file, handling optional arguments."""
-        
-        # Update settings only if new values are provided
+    def save_settings(self, game_directory=None, mods_directory=None, profile_name=None, 
+                    default_modpack=None, backup_mods=None, remove_mods=None, auto_install=None, 
+                    skip_mod_selection=None):
+        """Save settings to the JSON file, handling optional arguments and UI values."""
+
+        # Update settings dictionary with provided values
         if game_directory is not None:
             self.settings["game_directory"] = game_directory
         if mods_directory is not None:
@@ -1394,30 +1407,24 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.settings["profile_name"] = profile_name
         if default_modpack is not None:
             self.settings["default_modpack"] = default_modpack
-        if hasattr(self, "backup_checkbox"):
-            self.settings["backup_mods"] = self.backup_checkbox.isChecked()
-        if hasattr(self, "remove_checkbox"):
-            self.settings["remove_mods"] = self.remove_checkbox.isChecked()
-        if hasattr(self, "auto_install_checkbox"):
-            self.settings["auto_install"] = self.auto_install_checkbox.isChecked()
-        if hasattr(self, "skip_mod_selection_checkbox"):
-            self.settings["skip_mod_selection"] = self.skip_mod_selection_checkbox.isChecked()
-        if hasattr(self, "debug_checkbox"):
-            self.settings["debug_mode"] = self.debug_checkbox.isChecked()
+        if backup_mods is not None:
+            self.settings["backup_mods"] = backup_mods
+        if remove_mods is not None:
+            self.settings["remove_mods"] = remove_mods
+        if auto_install is not None:
+            self.settings["auto_install"] = auto_install
+        if skip_mod_selection is not None:
+            self.settings["skip_mod_selection"] = skip_mod_selection
 
-        # Write the settings to the JSON file
+        # Write settings to the JSON file
         try:
-            with open(SETTINGS_FILE, "w") as f:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=4)
 
             self.load_settings()  # Reload the settings after saving
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
-
-        finally:
-            if popup:
-                popup.close()
 
     # Function to reset settings to defaults
     def reset_to_default(self, game_dir_entry):
@@ -1579,251 +1586,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             msg_box.setText(f"An unexpected error occurred: {e}")
             msg_box.exec()
             return []
-
-############################################################
-# Foundation of Backup popup and functions
-############################################################
-
-    def auto_backup_popup(self):
-
-        # Create a new popup window
-        popup = QDialog(self)
-        popup.setWindowTitle("Auto Backup Settings")
-
-        # Create the layout for the popup
-        layout = QVBoxLayout(popup)
-
-        # Add a label for interval setting
-        label = QLabel("Set the interval (in seconds) for automatic backups:", popup)
-        layout.addWidget(label)
-
-        # Add a spinbox for selecting the interval (in seconds)
-        interval_spinbox = QSpinBox(popup)
-        interval_spinbox.setMinimum(5)  # Minimum interval is 5 seconds
-        interval_spinbox.setMaximum(600)  # Maximum interval is 600 seconds (10 minutes)
-        interval_spinbox.setValue(self.backup_interval)  # Display current value in seconds
-        layout.addWidget(interval_spinbox)
-
-        # Add preset buttons for predefined intervals
-        preset_buttons_layout = QHBoxLayout()
-        preset_intervals = [5, 10, 30, 60, 120, 300, 600]
-
-        for interval in preset_intervals:
-            label = f"{interval} sec" if interval < 60 else f"{interval // 60} min"
-            preset_button = QPushButton(label, popup)
-            preset_button.clicked.connect(lambda _, i=interval: interval_spinbox.setValue(i))
-            preset_buttons_layout.addWidget(preset_button)
-
-        layout.addLayout(preset_buttons_layout)
-
-        # Add Horizontal Line (Separator)
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        line.setLineWidth(2)
-        layout.addWidget(line)
-
-        # Add a label for interval setting
-        label = QLabel("Choose which backup file to restore:", popup)
-        layout.addWidget(label)
-
-        # Backup dropdown with load button
-        backup_dropdown_layout = QHBoxLayout()
-        self.backup_dropdown = QComboBox(popup)  # Now an instance attribute
-        self.update_backup_dropdown(self.backup_dropdown)  # Populate the dropdown with existing backups
-        backup_dropdown_layout.addWidget(self.backup_dropdown)
-
-        # Add a Load button to refresh the dropdown
-        load_button = QPushButton("Load", popup)
-        load_button.clicked.connect(lambda: self.update_backup_dropdown(self.backup_dropdown))
-        backup_dropdown_layout.addWidget(load_button)
-
-        layout.addLayout(backup_dropdown_layout)
-
-        # Restore, delete all, and open folder buttons
-        button_layout = QHBoxLayout()
-        restore_button = QPushButton("Restore Backup", popup)
-        delete_all_button = QPushButton("Delete All", popup)
-        open_folder_button = QPushButton("Open Folder", popup)
-        button_layout.addWidget(restore_button)
-        button_layout.addWidget(delete_all_button)
-        button_layout.addWidget(open_folder_button)
-        layout.addLayout(button_layout)
-
-        # Start, stop, and cancel buttons
-        action_buttons_layout = QHBoxLayout()
-        start_button = QPushButton("Start", popup)
-        stop_button = QPushButton("Stop", popup)
-        cancel_button = QPushButton("Cancel", popup)
-        action_buttons_layout.addWidget(start_button)
-        action_buttons_layout.addWidget(stop_button)
-        action_buttons_layout.addWidget(cancel_button)
-        layout.addLayout(action_buttons_layout)
-
-        # Connect buttons to their respective functions
-        start_button.clicked.connect(lambda: self.start_auto_backup(interval_spinbox.value(), popup))
-        stop_button.clicked.connect(lambda: self.stop_auto_backup(popup))
-        cancel_button.clicked.connect(popup.close)
-        restore_button.clicked.connect(lambda: self.restore_backup(self.backup_dropdown.currentText()))  # Access backup_dropdown as instance attribute
-        delete_all_button.clicked.connect(self.delete_all_backups)
-        open_folder_button.clicked.connect(self.open_backup_folder)
-
-        popup.exec()
-
-    def start_auto_backup(self, interval, parent_widget):
-        """Start the automatic backup with user-defined intervals"""
-        self.backup_interval = interval
-        if not self.backup_timer.isActive():
-            print(f"Starting auto backup every {interval} seconds.")  # Debugging info
-            self.backup_timer.start(interval * 1000)  # Convert to milliseconds
-            # Notify user of backup start
-            QMessageBox.information(parent_widget, "Auto Backup", f"Auto backup started. Interval: {interval} seconds.")
-        else:
-            print("Backup timer is already active.")  # Debugging info
-
-    def stop_auto_backup(self, parent_widget):
-        """Stop the automatic backup"""
-        if self.backup_timer.isActive():
-            print("Stopping auto backup.")  # Debugging info
-            self.backup_timer.stop()
-            # Notify user of backup stop
-            QMessageBox.information(parent_widget, "Auto Backup", "Auto backup stopped.")
-        else:
-            print("Backup timer was not active.")  # Debugging info
-            QMessageBox.information(parent_widget, "Auto Backup", "Backup timer was not active.")
-
-    def get_backup_dir(self, macos=False):
-        """Get the backup directory path based on the platform."""
-        if macos:
-            return os.path.expanduser("~/Library/Application Support/Balatro/1/autosave")
-        return os.path.expandvars("%AppData%\\Balatro\\1\\autosave")
-
-    def get_save_file_path(self, macos=False):
-        """Get the save file path based on the platform."""
-        if macos:
-            return os.path.expanduser("~/Library/Application Support/Balatro/1/save.jkr")
-        return os.path.expandvars("%AppData%\\Balatro\\1\\save.jkr")
-
-    def perform_backup(self, macos=False):
-        """Perform the backup task."""
-        try:
-            # Define paths
-            save_file_path = self.get_save_file_path(macos)
-            backup_dir = self.get_backup_dir(macos)
-
-            # Ensure the backup directory exists
-            if not os.path.exists(backup_dir):
-                os.makedirs(backup_dir)
-
-            # Create a timestamped backup file name
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            backup_file_name = f"save-{timestamp}.jkr"
-            backup_file_path = os.path.join(backup_dir, backup_file_name)
-
-            # Perform the file copy
-            shutil.copy2(save_file_path, backup_file_path)
-            print(f"Backup successful: {backup_file_path}")  # Debugging info
-
-        except Exception as e:
-            print(f"Backup failed: {str(e)}")  # Debugging info
-
-    def update_backup_dropdown(self, dropdown, macos=False):
-        """Update the dropdown with the list of backups."""
-        backup_dir = self.get_backup_dir(macos)
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir)
-
-        backup_files = sorted([f for f in os.listdir(backup_dir) if f.endswith(".jkr")])
-
-        dropdown.clear()
-        for backup in backup_files:
-            dropdown.addItem(backup)
-
-    def restore_backup(self, backup_file, macos=False):
-        """Backup the current save and restore the selected backup."""
-        try:
-            # Define paths
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            save_file_path = self.get_save_file_path(macos)
-            backup_dir = self.get_backup_dir(macos)
-            backup_file_path = os.path.join(backup_dir, backup_file)
-
-            # Backup current save.jkr as save.jkr.bk (if exists, suffix number)
-            backup_save_path = os.path.join(backup_dir, f"save-{timestamp}-bk.jkr")
-            counter = 1
-            while os.path.exists(backup_save_path):
-                backup_save_path = os.path.join(backup_dir, f"save-{timestamp}-bk-{counter}.jkr")
-                counter += 1
-
-            shutil.copy2(save_file_path, backup_save_path)
-            print(f"Current save backed up as: {backup_save_path}")
-
-            # Restore the selected backup
-            shutil.copy2(backup_file_path, save_file_path)
-            print(f"Backup {backup_file} restored to save.jkr")
-
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Information)
-            msg_box.setWindowTitle("Restore Complete")
-            msg_box.setText(f"Backup {backup_file} restored successfully.")
-            msg_box.exec()
-
-        except Exception as e:
-            print(f"Restore failed: {str(e)}")
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle("Restore Failed")
-            msg_box.setText(f"Failed to restore backup: {str(e)}")
-            msg_box.exec()
-
-    def delete_all_backups(self, macos=False):
-        """Delete all backup saves with a confirmation prompt."""
-        try:
-            # Prompt the user for confirmation
-            reply = QMessageBox.question(
-                self, 
-                "Confirm Deletion", 
-                "Are you sure you want to delete all backup saves?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-
-            # Check if the user clicked 'Yes'
-            if reply == QMessageBox.StandardButton.Yes:
-                backup_dir = self.get_backup_dir(macos)
-
-                for backup_file in os.listdir(backup_dir):
-                    file_path = os.path.join(backup_dir, backup_file)
-                    if os.path.isfile(file_path) and backup_file.endswith(".jkr"):
-                        os.remove(file_path)
-
-                print("All backups deleted.")
-                msg_box = QMessageBox()
-                msg_box.setIcon(QMessageBox.Icon.Information)
-                msg_box.setWindowTitle("Delete All")
-                msg_box.setText("All backups deleted successfully.")
-                msg_box.exec()
-
-                # Update the dropdown after deletion
-                self.update_backup_dropdown(self.backup_dropdown, macos)
-
-            else:
-                print("Deletion canceled.")
-        
-        except Exception as e:
-            print(f"Failed to delete backups: {str(e)}")
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle("Delete Failed")
-            msg_box.setText(f"Failed to delete backups: {str(e)}")
-            msg_box.exec()
-
-    def open_backup_folder(self, macos=False):
-        """Open the folder containing the backups."""
-        backup_dir = self.get_backup_dir(macos)
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir)
-
-        webbrowser.open(backup_dir)
 
 ############################################################
 # Top functions (Play, installed info, refresh)
@@ -2254,6 +2016,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if success:
             self.verify_modpack_integrity()
 
+        self.load_settings()  # Reload the settings after the download
+
         # Check the setting and install modpack if needed
         if success and self.settings.get("auto_install", False):
             self.install_modpack()
@@ -2313,13 +2077,23 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Check if the repository exists in the Modpacks folder
         if not os.path.isdir(repo_path):
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Repository not found in Modpacks folder. Attempting to clone it at {repo_path}."
-            )
-            self.download_modpack(main_window=self, clone_url=repo_url)
-            return
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("Warning")
+            msg_box.setText(f"Repository not found in Modpacks folder. Attempt to clone {repo_path}?")
+            msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            response = msg_box.exec()
+
+            if response == QMessageBox.StandardButton.No:
+                return
+            
+            try:
+                # Clone the repository if it does not exist
+                self.download_modpack(main_window=self, clone_url=repo_url)
+            
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to clone repository: {str(e)}")
+                return
 
         # Create and display the progress dialog for updating
         self.progress_dialog = QProgressDialog("", None, 0, 0)  # Pass None to remove the cancel button
@@ -2386,6 +2160,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # If successful, verify the integrity of the downloaded modpack
         if success:
             self.verify_modpack_integrity()
+
+        self.load_settings()  # Reload the settings after the update
 
         # Check the setting and install modpack if needed
         if success and self.settings.get("auto_install", False):
@@ -2615,7 +2391,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             # Add a star label for favorite mods
             star_label = QLabel("★" if mod in self.favorite_mods else "☆", popup)
-            star_label.setStyleSheet("font-size: 20px; color: black;")
+            star_label.setStyleSheet("font-size: 20px; color: white;")
             star_label.setCursor(Qt.CursorShape.PointingHandCursor)  # Clickable star
             star_label.mousePressEvent = lambda _, mod=mod, label=star_label: toggle_favorite(label, mod)
 
@@ -2964,8 +2740,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if os.path.isdir(mods_dir):
             # Determine if backup is enabled
             backup_mods = self.settings.get("backup_mods", False)
-            if hasattr(self, "backup_checkbox"):  # Use checkbox state if available
-                backup_mods = self.backup_checkbox.isChecked()
 
             if backup_mods:
                 # Create a timestamped backup folder name
@@ -2987,8 +2761,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             # Remove existing mods folder if enabled
             remove_mods = self.settings.get("remove_mods", False)
-            if hasattr(self, 'remove_checkbox'):  # Use checkbox if available
-                remove_mods = self.remove_checkbox.isChecked()
 
             if remove_mods:
                 # Platform-specific path resolution
@@ -3102,7 +2874,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Question)
         msg_box.setWindowTitle("Confirm Uninstallation")
-        msg_box.setText("Are you sure you want to uninstall the modpack? This action cannot be undone.")
+        msg_box.setText("Are you sure you want to uninstall the modpack? This will wipe your Mods folder and its contents. Cannot be undone.")
         msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
 
@@ -3458,16 +3230,16 @@ if __name__ == "__main__":
     # Set global stylesheet to apply a 1pt gray border to all QPushButtons
     app.setStyleSheet("""
         QWidget {
-            background-color: #f3f3f3;  /* Set background color */
-            color: #000000;  /* Set text color */
+            background-color: #222222;  /* Set background color */
+            color: #ffffff;  /* Set text color */
         }
                     
         QMainWindow, QDialog, QWidget {
-            background-color: #f3f3f3;  /* Force window background to white */
+            background-color: #222222;  /* Force window background to white */
         }
                     
         QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox, QSpinBox {
-            color: #000000;  /* Force text color to black */
+            color: #ffffff;
         }
                     
         QPushButton {
@@ -3476,7 +3248,7 @@ if __name__ == "__main__":
             padding-bottom: 8px; /* Equivalent to ipady */
             padding-left: 5px;  /* Equivalent to ipadx */
             padding-right: 5px; /* Equivalent to ipadx */
-            background-color: #f3f3f3;  /* Default background color */
+            background-color: #222222;  /* Default background color */
         }
                     
         QPushButton:hover {
@@ -3484,7 +3256,7 @@ if __name__ == "__main__":
         }
                     
         QPushButton:pressed {
-            background-color: #aaaaaa;  /* Press color */
+            background-color: #222222;  /* Press color */
         }
                     
         QPushButton:disabled {
@@ -3501,13 +3273,13 @@ if __name__ == "__main__":
         QComboBox {
             padding: 6px;  /* Padding inside the dropdown */
             font-size: 10pt;  /* Font size for the dropdown */
-            background-color: #f3f3f3;  /* Default background color */
+            background-color: #222222;  /* Default background color */
             border: 1px solid gray;  /* Dropdown border */
         }
                     
         QComboBox QLineEdit {
             padding: 20px;  /* Padding inside the editable field */
-            background-color: #f3f3f3;  /* Background color for editable field */
+            background-color: #222222;  /* Background color for editable field */
             border: none;  /* Remove the border for the internal QLineEdit */
         }
                     
