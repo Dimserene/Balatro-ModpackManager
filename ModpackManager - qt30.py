@@ -212,7 +212,7 @@ def fetch_modpack_data(url):
 modpack_data = fetch_modpack_data(url)
 
 # Extract `recommanded_lovely` if available
-recommanded_lovely = modpack_data.get("recommanded_lovely")
+recommanded_lovely = modpack_data.get("recommanded_lovely", "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/")
 
 def fetch_dependencies(url):
     """
@@ -3231,10 +3231,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             if archive_name.endswith(".zip"):
                 with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                    zip_ref.extractall(game_dir)
+                    zip_ref.extractall(os.path.join(game_dir, archive_name))
             elif archive_name.endswith(".tar.gz"):
                 with tarfile.open(archive_path, "r:gz") as tar:
-                    tar.extractall(game_dir)
+                    tar.extractall(os.path.join(game_dir, archive_name))
 
             # Verify extracted files
             missing_files = [f for f in extracted_files if not os.path.exists(os.path.join(game_dir, f))]
