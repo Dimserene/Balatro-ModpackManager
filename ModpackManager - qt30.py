@@ -44,8 +44,8 @@ if system_platform == "Windows":
 elif system_platform == "Linux":
 
     if is_steam_deck:
-        internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
-        external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+        internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro/"
+        external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro/"
 
         # Check if the game exists on internal storage, else fall back to external storage
         game_directory = internal_game_dir if os.path.exists(os.path.join(internal_game_dir, "Balatro.exe")) else external_game_dir
@@ -1661,8 +1661,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if is_steam_deck:
             try:
                 # Check internal and external game paths
-                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
-                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro/"
+                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro/"
 
                 # Use external game path if internal is missing
                 game_directory = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
@@ -3254,8 +3254,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         elif system_platform == "Linux":
 
             if is_steam_deck:
-                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
-                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro/"
+                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro/"
 
                 # Check if the game exists on internal storage, else use external
                 game_dir = internal_game_dir if os.path.exists(os.path.join(internal_game_dir, "Balatro.exe")) else external_game_dir
