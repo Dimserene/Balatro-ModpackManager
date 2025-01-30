@@ -213,6 +213,7 @@ modpack_data = fetch_modpack_data(url)
 
 # Extract `recommanded_lovely` if available
 recommanded_lovely = modpack_data.get("recommanded_lovely", "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/")
+print("Recommanded Lovely URL:", recommanded_lovely)
 
 def fetch_dependencies(url):
     """
