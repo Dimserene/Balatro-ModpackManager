@@ -3258,7 +3258,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
 
                 # Check if the game exists on internal storage, else use external
-                game_dir = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
+                game_dir = internal_game_dir if os.path.exists(os.path.join(internal_game_dir, "Balatro.exe")) else external_game_dir
                 game_exe = "Balatro.exe"
 
             else:
