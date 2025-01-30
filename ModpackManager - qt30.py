@@ -212,7 +212,7 @@ def fetch_modpack_data(url):
 modpack_data = fetch_modpack_data(url)
 
 # Extract `recommanded_lovely` if available
-recommanded_lovely = modpack_data.get("recommanded_lovely", "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/")
+recommanded_lovely = modpack_data.get("recommanded_lovely")
 
 def fetch_dependencies(url):
     """
@@ -1970,7 +1970,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # If the user has never downloaded a modpack, blink the "Download" button
         if not modpack_downloaded:
             self.blink_button(self.download_button)
-            
+
         # If a modpack has been downloaded but not installed, blink the "Install" button
         elif modpack_downloaded and not modpack_installed:
             self.blink_button(self.install_button)
@@ -1987,7 +1987,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.blink_timer = QTimer(self)
         self.blink_timer.timeout.connect(lambda: self.toggle_button_style(button))
         self.blink_timer.start(500)  # Blink every 500ms
-
 
     def toggle_button_style(self, button):
         """Toggle button color for blinking effect."""
