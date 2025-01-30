@@ -3231,10 +3231,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             if archive_name.endswith(".zip"):
                 with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                    zip_ref.extractall(os.path.join(game_dir, archive_name))
+                    zip_ref.extractall(game_dir)
             elif archive_name.endswith(".tar.gz"):
                 with tarfile.open(archive_path, "r:gz") as tar:
-                    tar.extractall(os.path.join(game_dir, archive_name))
+                    tar.extractall(game_dir)
 
             # Verify extracted files
             missing_files = [f for f in extracted_files if not os.path.exists(os.path.join(game_dir, f))]
@@ -3253,10 +3253,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             QMessageBox.critical(None, "Error", f"Failed to download Lovely Injector: {e}")
             if os.path.exists(archive_path):
                 os.remove(archive_path)
+
         except (zipfile.BadZipFile, tarfile.TarError) as e:
             QMessageBox.critical(None, "Error", f"Failed to extract the archive: {e}")
             if os.path.exists(archive_path):
                 os.remove(archive_path)
+
         except Exception as e:
             QMessageBox.critical(None, "Error", f"An unexpected error occurred during installation: {str(e)}")
 

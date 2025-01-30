@@ -3188,6 +3188,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 return
             archive_name = "lovely-injector.tar.gz"
             extracted_files = ["liblovely.dylib", "run_lovely.sh"]
+            
         elif system_platform == "Windows" or "Linux":
             url = "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/lovely-x86_64-pc-windows-msvc.zip"
             archive_name = "lovely-injector.zip"
