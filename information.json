@@ -1,8 +1,7 @@
 {
-  "latest_version": "1.8.2",
-
+  "latest_version": "1.9.0",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Fixed presets not reading.\n- Fixed customized game directory not registered by manager.",
+  "changelog": "- Complete overhaul of settings menu, added tabs and new settings.\n- Now you can set default behavior for skipping mod selection, automatically call install function upon download/update finished, etc.\n- Now manager will try its best to guide (first-time) users to download or install modpacks and lovely injector.\n- Bug fixes.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
