@@ -48,7 +48,7 @@ elif system_platform == "Linux":
         external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
 
         # Check if the game exists on internal storage, else fall back to external storage
-        game_directory = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
+        game_directory = internal_game_dir if os.path.exists(os.path.join(internal_game_dir, "Balatro.exe")) else external_game_dir
 
         SETTINGS_FOLDER = os.path.expanduser("~/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/ManagerSettings")
         DEFAULT_SETTINGS = {
