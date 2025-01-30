@@ -4,7 +4,7 @@
 
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
 
-  "changelog": "- Fixed presets not reading.\n- Fixed customized game directory not registered by manager.",
+  "changelog": "- Fixed presets not reading.\n- Fixed customized game directory not registered by manager. ",
 
   "dependencies": {
     "7thbeatcards": ["Talisman"],
