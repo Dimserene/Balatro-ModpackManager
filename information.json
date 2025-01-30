@@ -1,5 +1,6 @@
 {
   "latest_version": "1.8.2",
+  
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
   "changelog": "- Fixed presets not reading.\n- Fixed customized game directory not registered by manager.",
   "dependencies": {
