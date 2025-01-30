@@ -30,6 +30,9 @@ if system_platform == "Windows":
         "remove_mods": True,
         "skip_mod_selection": False,
         "auto_install": False,
+        "debug_mode": False,
+        "modpack_downloaded": "",
+        "modpack_installed": "",
     }
 
 elif system_platform == "Linux":
@@ -44,6 +47,9 @@ elif system_platform == "Linux":
         "remove_mods": True,
         "skip_mod_selection": False,
         "auto_install": False,
+        "debug_mode": False,
+        "modpack_downloaded": "",
+        "modpack_installed": "",
     }
 
 elif system_platform == "Darwin":
@@ -58,6 +64,9 @@ elif system_platform == "Darwin":
         "remove_mods": True,
         "skip_mod_selection": False,
         "auto_install": False,
+        "debug_mode": False,
+        "modpack_downloaded": "",
+        "modpack_installed": "",
     }
     
 SETTINGS_FILE = os.path.join(SETTINGS_FOLDER, "user_settings.json")
@@ -201,6 +210,9 @@ def fetch_modpack_data(url):
     return load_cached_modpack_data()
 
 modpack_data = fetch_modpack_data(url)
+
+# Extract `recommanded_lovely` if available
+recommanded_lovely = modpack_data.get("recommanded_lovely", "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/")
 
 def fetch_dependencies(url):
     """
@@ -584,7 +596,7 @@ class TutorialPopup(QDialog):
             QLabel {
                 background-color: lightyellow;
                 color: #333333;
-                font-size: 10pt;
+                font: 10pt 'Helvetica';
                 padding: 10px;
                 border: 2px solid #0087eb;
             }
@@ -690,7 +702,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if system_platform == "Darwin":  # macOS
             self.game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             self.mods_dir = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             self.mods_dir = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
             
@@ -721,6 +733,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Create a reference to the worker thread
         self.worker = None
+
+        # Initialize blink_timer as None
+        self.blink_timer = None
+
+        """Check modpack status when the manager starts."""
+        self.setup_button_blinking()  # Ensure correct buttons blink
 
         self.tutorial_popup = None  # To track the active tutorial popup
         self.current_step = 0  # To track the current tutorial step
@@ -914,42 +932,42 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Verify Integrity button
         self.verify_button = QPushButton("Verify Integrity", self)
-        self.verify_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.verify_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.verify_button, 8, 0, 1, 3)  # Adjust grid position as needed
         self.verify_button.clicked.connect(self.verify_modpack_integrity)
         self.verify_button.setToolTip("Check modpack for missing or incomplete files")
 
         # Check Versions button
         self.check_versions_button = QPushButton("Check Versions", self)
-        self.check_versions_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.check_versions_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.check_versions_button, 8, 3, 1, 3)
         self.check_versions_button.clicked.connect(self.check_versions)
         self.check_versions_button.setToolTip("Check latest version for all modpacks")
 
         # Install Lovely button
         self.install_lovely_button = QPushButton("Install/Update lovely", self)
-        self.install_lovely_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.install_lovely_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.install_lovely_button, 9, 0, 1, 3)
         self.install_lovely_button.clicked.connect(self.install_lovely_injector)
         self.install_lovely_button.setToolTip("Install/update lovely injector")
 
         # Settings button
         self.open_settings_button = QPushButton("Settings", self)
-        self.open_settings_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.open_settings_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.open_settings_button, 9, 3, 1, 3)
         self.open_settings_button.clicked.connect(self.open_settings_popup)
         self.open_settings_button.setToolTip("Settings")
 
         # Mod List button
         self.mod_list_button = QPushButton("Mod List", self)
-        self.mod_list_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.mod_list_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.mod_list_button, 10, 0, 1, 3)
         self.mod_list_button.clicked.connect(self.open_mod_list)
         self.mod_list_button.setToolTip("Open mod list in web browser")
 
         # Discord button
         self.discord_button = QPushButton("Join Discord", self)
-        self.discord_button.setStyleSheet("font: 10pt 'Helvetica';")
+        self.discord_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.discord_button, 10, 3, 1, 3)
         self.discord_button.clicked.connect(self.open_discord)
         self.discord_button.setToolTip("Open Discord server in web browser")
@@ -962,7 +980,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.tutorial_link.setStyleSheet("""
             QLabel {
                 color: #0087eb;  /* Blue link color */
-                font-size: 8pt;
+                font: 8pt 'Helvetica';
                 text-decoration: underline;  /* Underline the text to make it look like a link */
             }
             QLabel:hover {
@@ -1006,6 +1024,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Update the settings with the new default modpack
         self.settings["default_modpack"] = selected_modpack
+
+        self.setup_button_blinking()  # Re-run the check whenever modpack changes
 
     def update_color(self):
         """Smooth breathing effect with a full-spectrum rainbow color transition."""
@@ -1158,7 +1178,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 border: 1px solid #aaa;
                 margin-right: 4px;
                 font-weight: bold;
-                font-size: 10pt;
+                font: 10pt 'Helvetica';
                 min-width: 110px;
             }
             QTabBar::tab:selected {
@@ -1196,7 +1216,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         default_game_dir = self.settings["game_directory"]
         if system_platform == "Darwin":  # macOS
             default_game_dir = os.path.abspath(os.path.expanduser(self.settings["game_directory"]))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             default_game_dir = os.path.abspath(os.path.expandvars(self.settings["game_directory"]))
 
         # List all .exe files in the game directory and strip ".exe"
@@ -1211,7 +1231,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 background-color: #222222;
                 border: 1px solid #999;
                 padding: 4px;
-                font-size: 10pt;
+                font: 10pt 'Helvetica';
             }
         """)
         
@@ -1244,7 +1264,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         mods_dir_label = QLabel("Mods Directory:")
         if system_platform == "Darwin":
             self.mods_dir_entry = QLineEdit(os.path.expanduser(self.settings["mods_directory"]))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             self.mods_dir_entry = QLineEdit(os.path.expandvars(self.settings["mods_directory"]))
         self.mods_dir_entry.setReadOnly(True)  # Make it non-editable
         self.mods_dir_entry.setFixedHeight(30)
@@ -1253,7 +1273,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 background-color: #222222;
                 border: 1px solid #999;
                 padding: 4px;
-                font-size: 10pt;
+                font: 10pt 'Helvetica';
             }
         """)
 
@@ -1278,7 +1298,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.profile_name_var.setStyleSheet("""
             QComboBox {
                 padding: 6px;
-                font-size: 10pt;
+                font: 10pt 'Helvetica';
                 background-color: #222222;
             }
         """)
@@ -1395,7 +1415,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def save_settings(self, game_directory=None, mods_directory=None, profile_name=None, 
                     default_modpack=None, backup_mods=None, remove_mods=None, auto_install=None, 
-                    skip_mod_selection=None):
+                    skip_mod_selection=None, modpack_downloaded=None, modpack_installed=None):
         """Save settings to the JSON file, handling optional arguments and UI values."""
 
         # Update settings dictionary with provided values
@@ -1415,6 +1435,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.settings["auto_install"] = auto_install
         if skip_mod_selection is not None:
             self.settings["skip_mod_selection"] = skip_mod_selection
+        if modpack_downloaded is not None:
+            self.settings["modpack_downloaded"] = modpack_downloaded
+        if modpack_installed is not None:
+            self.settings["modpack_installed"] = modpack_installed
 
         # Write settings to the JSON file
         try:
@@ -1451,7 +1475,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         if system_platform == "Darwin":  # macOS
             expanded_path = os.path.abspath(os.path.expanduser(path))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             expanded_path = os.path.abspath(os.path.expandvars(path))
 
         print(f"Expanded Path: {expanded_path}")
@@ -1489,14 +1513,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Construct the new mods directory path based on profile name
             if system_platform == "Darwin":  # macOS
                 new_mods_dir = f"~/Library/Application Support/{profile_name}/Mods"
-            elif system_platform == "Windows" or "Linux":
+            elif system_platform in ["Windows", "Linux"]:
                 new_mods_dir = f"%AppData%\\{profile_name}\\Mods"
 
             self.settings["mods_directory"] = new_mods_dir  # Update the settings
 
             if system_platform == "Darwin":  # macOS
                 self.mods_dir = os.path.abspath(os.path.expanduser(new_mods_dir))
-            elif system_platform == "Windows" or "Linux":
+            elif system_platform in ["Windows", "Linux"]:
                 self.mods_dir = os.path.abspath(os.path.expandvars(new_mods_dir))
 
 
@@ -1540,7 +1564,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             try:
                 if system_platform == "Darwin" and os.path.isdir(source_exe):
                     shutil.copytree(source_exe, destination_exe, dirs_exist_ok=True)
-                elif system_platform == "Windows" or "Linux":
+                elif system_platform in ["Windows", "Linux"]:
                     shutil.copy2(source_exe, destination_exe)
 
                 msg_box = QMessageBox()
@@ -1565,7 +1589,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Fetch .app bundles and strip the extension
                 files = [f for f in os.listdir(directory) if f.endswith(".app") and os.path.isdir(os.path.join(directory, f))]
                 return [os.path.splitext(f)[0] for f in files]
-            elif system_platform == "Windows" or "Linux":
+            elif system_platform in ["Windows", "Linux"]:
                 # Fetch .exe files and strip the extension
                 files = [f for f in os.listdir(directory) if f.endswith(".exe")]
                 return [os.path.splitext(f)[0] for f in files]
@@ -1802,7 +1826,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Paths for version and modpack name files
         if system_platform == "Darwin":  # macOS
             mods_path = os.path.join(os.path.dirname(os.path.abspath(os.path.expanduser(self.mods_dir))), "ModpackUtil")
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             mods_path = os.path.join(os.path.dirname(os.path.abspath(os.path.expandvars(self.mods_dir))), "ModpackUtil")
 
         current_version_file = os.path.join(mods_path, 'CurrentVersion.txt')
@@ -1832,7 +1856,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Detect the operating system and resolve the install path
         if system_platform == "Darwin":  # macOS
             install_path = os.path.abspath(os.path.expanduser(self.settings["mods_directory"]))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             install_path = os.path.abspath(os.path.expandvars(self.settings["mods_directory"]))
 
         # Paths for version and modpack name files
@@ -1915,6 +1939,64 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             msg_box.setText("Invalid modpack selected.")
             msg_box.exec()
 
+    def setup_button_blinking(self):
+        """Blink the Download or Install button based on user's modpack status."""
+        selected_modpack = self.modpack_var.currentText()
+        selected_branch = self.branch_var.currentText()
+        repo_name = f"{selected_modpack}-{selected_branch}" if selected_branch != "main" else selected_modpack
+        repo_path = os.path.join(os.getcwd(), "Modpacks", repo_name)
+
+        modpack_downloaded = os.path.exists(repo_path)  # Check if folder exists
+
+        if system_platform == "Darwin":  # macOS
+            mods_path = os.path.join(os.path.abspath(os.path.expanduser(self.mods_dir)), "ModpackUtil")
+        elif system_platform in ["Windows", "Linux"]:
+            mods_path = os.path.join(os.path.abspath(os.path.expandvars(self.mods_dir)), "ModpackUtil")
+
+        modpack_installed = os.path.exists(mods_path)
+        lovely_injector_installed = self.check_lovely_injector_installed()
+
+        # Stop any existing blinking safely
+        if hasattr(self, "blink_timer") and self.blink_timer:
+            if self.blink_timer.isActive():
+                self.blink_timer.stop()
+            self.download_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+            self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+            self.install_lovely_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+
+        if not lovely_injector_installed:
+            self.blink_button(self.install_lovely_button)
+
+        # If the user has never downloaded a modpack, blink the "Download" button
+        if not modpack_downloaded:
+            self.blink_button(self.download_button)
+            
+        # If a modpack has been downloaded but not installed, blink the "Install" button
+        elif modpack_downloaded and not modpack_installed:
+            self.blink_button(self.install_button)
+
+    def blink_button(self, button):
+        """Make the given button blink with a soft yellow effect."""
+        # Ensure there's only one timer running
+        if hasattr(self, "blink_timer") and self.blink_timer:
+            if self.blink_timer.isActive():
+                self.blink_timer.stop()
+
+        # Create a new blinking timer
+        self.blink_state = True  # Track blinking state
+        self.blink_timer = QTimer(self)
+        self.blink_timer.timeout.connect(lambda: self.toggle_button_style(button))
+        self.blink_timer.start(500)  # Blink every 500ms
+
+
+    def toggle_button_style(self, button):
+        """Toggle button color for blinking effect."""
+        self.blink_state = not self.blink_state
+        if self.blink_state:
+            button.setStyleSheet("background-color: rgba(255, 255, 150, 180); color: white; font: 12pt 'Helvetica'")  # Red Blink
+        else:
+            button.setStyleSheet("background-color: none;; color: white; font: 12pt 'Helvetica'")  # Reset to default
+
     def download_modpack(self, main_window=None, clone_url=None):
         """Download the selected modpack with a prompt for overwriting."""
         modpack_name = self.modpack_var.currentText()
@@ -1960,12 +2042,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setStyleSheet("""
             QProgressDialog {
                 border: 3px solid #555;
-                background-color: #ffffff;
+                background-color: #222222;
             }
             QLabel {
-                font-size: 24px;
+                font: 24px 'Helvetica';
                 font-weight: bold;
-                color: #333;
+                color: #ffffff;
                 background-color: transparent;
             }
         """)
@@ -2015,6 +2097,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # If successful, verify the integrity of the downloaded modpack
         if success:
             self.verify_modpack_integrity()
+            self.save_settings(modpack_downloaded=True)  # Mark as downloaded
+            
+            # Stop blinking the Download button
+            if hasattr(self, "blink_timer") and self.blink_timer.isActive():
+                self.blink_timer.stop()
+                self.download_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+
+            # Now start blinking the Install button
+            self.blink_button(self.install_button)
 
         self.load_settings()  # Reload the settings after the download
 
@@ -2104,12 +2195,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setStyleSheet("""
             QProgressDialog {
                 border: 3px solid #555;
-                background-color: #ffffff;
+                background-color: #222222;
             }
             QLabel {
-                font-size: 24px;
+                font: 24px 'Helvetica';
                 font-weight: bold;
-                color: #333;
+                color: #ffffff;
                 background-color: transparent;
             }
         """)
@@ -2161,6 +2252,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if success:
             self.verify_modpack_integrity()
 
+            # Now start blinking the Install button
+            self.blink_button(self.install_button)
+
         self.load_settings()  # Reload the settings after the update
 
         # Check the setting and install modpack if needed
@@ -2188,7 +2282,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Determine the install path based on the platform
         if system_platform == "Darwin":  # macOS
             install_path = os.path.abspath(os.path.expanduser(self.mods_dir))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             install_path = os.path.abspath(os.path.expandvars(self.mods_dir))
 
         mod_list = self.get_mod_list(mods_src)
@@ -2733,7 +2827,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Resolve platform-specific mods directory path
         if system_platform == "Darwin":  # macOS
             mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
 
         # Check if the Mods directory exists
@@ -2766,7 +2860,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 # Platform-specific path resolution
                 if system_platform == "Darwin":  # macOS
                     mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
-                elif system_platform == "Windows" or "Linux":
+                elif system_platform in ["Windows", "Linux"]:
                     mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
 
                 # Warning message box
@@ -2806,7 +2900,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Resolve mods directory based on platform
             if system_platform == "Darwin":  # macOS
                 mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
-            elif system_platform == "Windows" or "Linux":
+            elif system_platform in ["Windows", "Linux"]:
                 mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
 
             # Iterate through mods and copy them
@@ -2840,6 +2934,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Show installation success message
             QMessageBox.information(self, "Install Status", "Successfully installed modpack.")
 
+            # Mark modpack as installed
+            self.save_settings(modpack_installed=True)
+
+            # Stop blinking the Install button
+            if hasattr(self, "blink_timer") and self.blink_timer.isActive():
+                self.blink_timer.stop()
+                self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+
         except Exception as e:
             progress_dialog.close()
             QMessageBox.critical(self, "Error", f"An error occurred during installation: {e}")
@@ -2848,7 +2950,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             # Ensure mods_path is updated and debug folders are removed
             if system_platform == "Darwin":  # macOS
                 mods_path = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
-            elif system_platform == "Windows" or "Linux":
+            elif system_platform in ["Windows", "Linux"]:
                 mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
 
             remove_debug_folders(mods_path)
@@ -2867,7 +2969,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.settings = self.load_settings()
         if system_platform == "Darwin":  # macOS
             install_path = os.path.abspath(os.path.expanduser(self.mods_dir))
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             install_path = os.path.abspath(os.path.expandvars(self.mods_dir))
 
         # Confirm the uninstallation
@@ -3060,6 +3162,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             return "Unknown"
 
     def install_lovely_injector(self):
+
         # Prompt user to confirm the installation
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Question)
@@ -3068,36 +3171,42 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
         
-        if msg_box.exec() != QMessageBox.StandardButton.Yes:
+        if msg_box.exec() == QMessageBox.StandardButton.No:
             return
+
+        self.settings = self.load_settings()
+
+        # Use recommended URL if available
+        release_url = recommanded_lovely
 
         # Determine platform and download URL
         arch = platform.machine()
 
         if system_platform == "Darwin":  # macOS
             if arch == "arm64":
-                url = "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/lovely-aarch64-apple-darwin.tar.gz"
+                url = f"{release_url}lovely-aarch64-apple-darwin.tar.gz"
             elif arch == "x86_64":
-                url = "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/lovely-x86_64-apple-darwin.tar.gz"
+                url = f"{release_url}lovely-x86_64-apple-darwin.tar.gz"
             else:
                 QMessageBox.critical(None, "Error", "Unsupported macOS architecture.")
                 return
             archive_name = "lovely-injector.tar.gz"
             extracted_files = ["liblovely.dylib", "run_lovely.sh"]
-        elif system_platform == "Windows" or "Linux":
-            url = "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/lovely-x86_64-pc-windows-msvc.zip"
+            
+        elif system_platform in ["Windows", "Linux"]:
+            url = f"{release_url}lovely-x86_64-pc-windows-msvc.zip"
             archive_name = "lovely-injector.zip"
             extracted_files = ["version.dll"]
 
         # Expand and normalize the game directory path
         if system_platform == "Darwin":  # macOS
-            game_dir = os.path.abspath(os.path.expanduser(self.game_dir))
+            game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             game_exe = "Balatro.app"
         elif system_platform == "Linux":
-            game_dir = os.path.abspath(os.path.expandvars(self.game_dir))
+            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             game_exe = "Balatro.exe"
         elif system_platform == "Windows":
-            game_dir = os.path.abspath(os.path.expandvars(self.game_dir))
+            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             game_exe = "balatro.exe"
             
         archive_path = os.path.join(game_dir, archive_name)
@@ -3159,7 +3268,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if system_platform == "Darwin":  # macOS
             game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             lovely_path = os.path.join(game_dir, "liblovely.dylib")
-        elif system_platform == "Windows" or "Linux":
+        elif system_platform in ["Windows", "Linux"]:
             game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             lovely_path = os.path.join(game_dir, "version.dll")
 
@@ -3272,7 +3381,7 @@ if __name__ == "__main__":
                     
         QComboBox {
             padding: 6px;  /* Padding inside the dropdown */
-            font-size: 10pt;  /* Font size for the dropdown */
+            font: 10pt 'Helvetica';  /* Font size for the dropdown */
             background-color: #222222;  /* Default background color */
             border: 1px solid gray;  /* Dropdown border */
         }
