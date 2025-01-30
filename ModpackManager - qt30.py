@@ -14,9 +14,16 @@ import pandas as pd
 
 DATE = "2025/01/30"
 ITERATION = "30"
-VERSION = Version("1.9.0")  # Current version of the Modpack Manager
+VERSION = Version("1.9.1")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
+
+is_steam_deck = False
+if system_platform == "Linux":
+    with open("/etc/os-release", "r") as f:
+        os_release = f.read()
+        if "steamdeck" in os_release.lower():
+            is_steam_deck = True
 
 if system_platform == "Windows":
     SETTINGS_FOLDER = os.path.abspath(os.path.expandvars(r"%AppData%\\Balatro\\ManagerSettings"))
@@ -25,7 +32,6 @@ if system_platform == "Windows":
         "profile_name": "Balatro",
         "mods_directory": "%AppData%\\Balatro\\Mods",
         "default_modpack": "Dimserenes-Modpack",
-        "backup_interval": 60,
         "backup_mods": False,
         "remove_mods": True,
         "skip_mod_selection": False,
@@ -36,13 +42,52 @@ if system_platform == "Windows":
     }
 
 elif system_platform == "Linux":
-    SETTINGS_FOLDER = os.path.abspath(os.path.expandvars("/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/ManagerSettings"))
+
+    if is_steam_deck:
+        internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
+        external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+
+        # Check if the game exists on internal storage, else fall back to external storage
+        game_directory = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
+
+        SETTINGS_FOLDER = os.path.expanduser("~/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/ManagerSettings")
+        DEFAULT_SETTINGS = {
+            "game_directory": game_directory,
+            "profile_name": "Balatro",
+            "mods_directory": "/home/deck/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/Mods",
+            "default_modpack": "Dimserenes-Modpack",
+            "backup_mods": False,
+            "remove_mods": True,
+            "skip_mod_selection": False,
+            "auto_install": False,
+            "debug_mode": False,
+            "modpack_downloaded": "",
+            "modpack_installed": "",
+        }
+
+    else:
+        SETTINGS_FOLDER = os.path.abspath(os.path.expandvars("/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/ManagerSettings"))
+        DEFAULT_SETTINGS = {
+            "game_directory": "/home/$USER/.steam/steam/steamapps/common/Balatro",
+            "profile_name": "Balatro",
+            "mods_directory": "/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/Mods",
+            "default_modpack": "Dimserenes-Modpack",
+            "backup_mods": False,
+            "remove_mods": True,
+            "skip_mod_selection": False,
+            "auto_install": False,
+            "debug_mode": False,
+            "modpack_downloaded": "",
+            "modpack_installed": "",
+        }
+
+elif system_platform == "Darwin":
+    SETTINGS_FOLDER = os.path.abspath(os.path.expanduser("~/Library/Application Support/Balatro/ManagerSettings"))
     DEFAULT_SETTINGS = {
-        "game_directory": "/home/$USER/.steam/steam/steamapps/common/Balatro",
+        "game_directory": "~/Library/Application Support/Steam/steamapps/common/Balatro/",
         "profile_name": "Balatro",
-        "mods_directory": "/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/Mods",
+        "mods_directory": "~/Library/Application Support/Balatro/Mods",
         "default_modpack": "Dimserenes-Modpack",
-        "backup_interval": 60,
         "backup_mods": False,
         "remove_mods": True,
         "skip_mod_selection": False,
@@ -52,22 +97,6 @@ elif system_platform == "Linux":
         "modpack_installed": "",
     }
 
-elif system_platform == "Darwin":
-    SETTINGS_FOLDER = os.path.abspath(os.path.expanduser("~/Library/Application Support/Balatro/ManagerSettings"))
-    DEFAULT_SETTINGS = {
-        "game_directory": "~/Library/Application Support/Steam/steamapps/common/Balatro/",
-        "profile_name": "Balatro",
-        "mods_directory": "~/Library/Application Support/Balatro/Mods",
-        "default_modpack": "Dimserenes-Modpack",
-        "backup_interval": 60,
-        "backup_mods": False,
-        "remove_mods": True,
-        "skip_mod_selection": False,
-        "auto_install": False,
-        "debug_mode": False,
-        "modpack_downloaded": "",
-        "modpack_installed": "",
-    }
     
 SETTINGS_FILE = os.path.join(SETTINGS_FOLDER, "user_settings.json")
 INSTALL_FILE = os.path.join(SETTINGS_FOLDER, "excluded_mods.json")
@@ -1629,7 +1658,26 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             return
 
         # Check if the game directory is set
-        if system_platform == "Windows":
+        if is_steam_deck:
+            try:
+                # Check internal and external game paths
+                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
+                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+
+                # Use external game path if internal is missing
+                game_directory = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
+                self.settings["game_directory"] = game_directory  # Update settings dynamically
+
+                # Launch via Steam protocol
+                steam_command = "steam://rungameid/2379780"
+                print(f"Launching game via Steam: {steam_command}")
+                self.process = QProcess(self)
+                self.process.start("xdg-open", [steam_command])
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to launch game via Steam: {e}")
+
+        elif system_platform == "Windows":
             # Construct the path to the game executable
             self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
@@ -3202,9 +3250,21 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if system_platform == "Darwin":  # macOS
             game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             game_exe = "Balatro.app"
+
         elif system_platform == "Linux":
-            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
-            game_exe = "Balatro.exe"
+
+            if is_steam_deck:
+                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro"
+                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro"
+
+                # Check if the game exists on internal storage, else use external
+                game_dir = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
+                game_exe = "Balatro.exe"
+
+            else:
+                game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
+                game_exe = "Balatro.exe"
+
         elif system_platform == "Windows":
             game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
             game_exe = "balatro.exe"
