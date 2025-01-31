@@ -2148,12 +2148,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.save_settings(modpack_downloaded=True)  # Mark as downloaded
             
             # Stop blinking the Download button
-            if hasattr(self, "blink_timer") and self.blink_timer.isActive():
+        if hasattr(self, "blink_timer") and self.blink_timer:
+            if self.blink_timer.isActive():
                 self.blink_timer.stop()
                 self.download_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
 
-            # Now start blinking the Install button
-            self.blink_button(self.install_button)
+        # Now start blinking the Install button
+        self.blink_button(self.install_button)
 
         self.load_settings()  # Reload the settings after the download
 
@@ -2986,9 +2987,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.save_settings(modpack_installed=True)
 
             # Stop blinking the Install button
-            if hasattr(self, "blink_timer") and self.blink_timer.isActive():
-                self.blink_timer.stop()
-                self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+            if hasattr(self, "blink_timer") and self.blink_timer:
+                if self.blink_timer.isActive():
+                    self.blink_timer.stop()
+                    self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
 
         except Exception as e:
             progress_dialog.close()
