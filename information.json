@@ -1,7 +1,7 @@
 {
   "latest_version": "1.9.2",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Added elapsed timer in download/update progressbar.",
+  "changelog": "- Added elapsed timer in download/update progressbar.\n- Refresh installed modpack info automatically after install/uninstall.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
