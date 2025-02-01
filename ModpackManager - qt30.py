@@ -3068,6 +3068,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
 
             remove_debug_folders(mods_path)
+            self.update_installed_info()
 
             # Ensure the installation popup is closed
             if popup:
@@ -3106,6 +3107,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     success_box.setWindowTitle("Uninstall Status")
                     success_box.setText("Modpack uninstalled successfully.")
                     success_box.exec()
+                    self.update_installed_info()
                 else:
                     # Show warning message
                     warning_box = QMessageBox()
