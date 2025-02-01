@@ -12,9 +12,9 @@ import pandas as pd
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/01/30"
+DATE = "2025/02/01"
 ITERATION = "30"
-VERSION = Version("1.9.1")  # Current version of the Modpack Manager
+VERSION = Version("1.9.2")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
@@ -2101,17 +2101,28 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(f"Downloading {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
-        label.setStyleSheet("""
+        self.label = QLabel(f"Downloading {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
+        self.label.setStyleSheet("""
             QLabel {
                 background-color: transparent;
             }
         """)
 
+        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n")  # Show the elapsed time
+        self.elapsed_time_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.elapsed_time_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                font: 10pt 'Helvetica';
+                font-weight: normal;
+            }
+        """)
+
         # Create a layout for the dialog and add the label
         layout = QVBoxLayout(self.progress_dialog)
-        layout.addWidget(label)
+        layout.addWidget(self.label)
+        layout.addWidget(self.elapsed_time_label)
 
         self.progress_dialog.setLayout(layout)
         self.progress_dialog.show()
@@ -2125,13 +2136,35 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         QApplication.processEvents()
 
+        # Start the timer
+        self.start_time = time.time()
+
+        # Set a timer to update elapsed time every second
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_elapsed_time)
+        self.timer.start(1000)  # Update every second
+
+        # Create a ModpackDownloadWorker instance
         self.worker = ModpackDownloadWorker(repo_url, folder_name, selected_branch, force_update=True)
         self.worker.finished.connect(self.on_download_finished)
 
         # Start the worker thread
         self.worker.start()
 
+    def update_elapsed_time(self):
+        """Update elapsed time in the progress dialog."""
+        elapsed_seconds = int(time.time() - self.start_time)
+        minutes, seconds = divmod(elapsed_seconds, 60)
+        self.elapsed_time_label.setText(f"Elapsed time: {minutes:02}:{seconds:02}\n")
+        QApplication.processEvents()
+
     def on_download_finished(self, success, message):
+
+        # Stop the timer
+        self.timer.stop()
+        elapsed_seconds = int(time.time() - self.start_time)
+        minutes, seconds = divmod(elapsed_seconds, 60)
+
         # Close the progress dialog
         self.progress_dialog.close()
 
@@ -2139,7 +2172,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Information if success else QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("Download Status" if success else "Error")
-        msg_box.setText(message)
+        msg_box.setText(f"{message}\nElapsed time: {minutes:02}:{seconds:02}")
         msg_box.exec()
 
         # If successful, verify the integrity of the downloaded modpack
@@ -2255,17 +2288,28 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
 
         # Create a custom QLabel for the message with the modpack name
-        label = QLabel(f"Updating {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
-        label.setStyleSheet("""
+        self.label = QLabel(f"Updating {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
+        self.label.setStyleSheet("""
             QLabel {
                 background-color: transparent;
             }
         """)
 
+        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n")
+        self.elapsed_time_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.elapsed_time_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                font: 10pt 'Helvetica';
+                font-weight: normal;
+            }
+        """)
+
         # Create a layout for the dialog and add the label
         layout = QVBoxLayout(self.progress_dialog)
-        layout.addWidget(label)
+        layout.addWidget(self.label)
+        layout.addWidget(self.elapsed_time_label)
 
         self.progress_dialog.setLayout(layout)
         self.progress_dialog.show()
@@ -2279,6 +2323,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         QApplication.processEvents()
 
+        self.start_time = time.time()  # Start the timer
+
+        # Set a timer to update elapsed time every second
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_elapsed_time)
+        self.timer.start(1000)  # Update every second
+
         # Create the worker for updating the modpack
         self.worker = ModpackUpdateWorker(repo_url, repo_name, selected_branch, parent_folder)
         self.worker.finished.connect(self.on_update_finished)
@@ -2286,7 +2337,20 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Start the worker (background task)
         self.worker.start()
 
+    def update_elapsed_time(self):
+        """Update elapsed time in the progress dialog."""
+        elapsed_seconds = int(time.time() - self.start_time)
+        minutes, seconds = divmod(elapsed_seconds, 60)
+        self.elapsed_time_label.setText(f"Elapsed time: {minutes:02}:{seconds:02}\n")
+        QApplication.processEvents()
+
     def on_update_finished(self, success, message):
+
+        # Stop the timer
+        self.timer.stop()
+        elapsed_seconds = int(time.time() - self.start_time)
+        minutes, seconds = divmod(elapsed_seconds, 60)
+
         # Close the progress dialog
         self.progress_dialog.close()
 
@@ -2294,7 +2358,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Information if success else QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("Update Status" if success else "Error")
-        msg_box.setText(message)
+        msg_box.setText(f"{message}\nElapsed time: {minutes:02}:{seconds:02}")
         msg_box.exec()
 
         # If successful, verify the integrity of the downloaded modpack

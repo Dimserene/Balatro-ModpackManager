@@ -1,7 +1,7 @@
 {
-  "latest_version": "1.9.1",
+  "latest_version": "1.9.2",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Added Steam deck support (hopefully).\n- Fixed a fatal crash when force downloads are finished but the manager can't figure out what button to stop blinking.",
+  "changelog": "- Added elapsed timer in download/update progressbar.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
