@@ -1,5 +1,5 @@
 /build/
-/dist/
+/dist/old/
 *.spec
 excluded_mods.json
 user_settings.json
