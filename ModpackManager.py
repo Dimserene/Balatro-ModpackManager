@@ -177,14 +177,31 @@ def launch_manager():
     """Launch the Modpack Manager."""
     try:
         manager_path = os.path.join(MANAGER_FOLDER, MANAGER_EXECUTABLE)
+        manager_dir = os.path.dirname(manager_path)  # Get the folder where the executable is located
+
         if not os.path.exists(manager_path):
-            print("Modpack Manager not found. Please install it first.")
-            return
+            print("Modpack Manager not found. Downloading latest version...")
+            latest_version, download_url = fetch_latest_version()
+
+            if not latest_version or not download_url:
+                print("Failed to fetch latest version. Exiting.")
+                return
+
+            update_exe_path = download_update(download_url)
+            if update_exe_path:
+                replace_old_manager(update_exe_path, latest_version)
+            else:
+                print("Failed to download Modpack Manager. Exiting.")
+                return
 
         if system_platform == "Windows":
-            # Start the process independently and close launcher
-            subprocess.Popen(f'start "" "{manager_path}"', shell=True, creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-
+            subprocess.Popen(
+                f'start "" "{manager_path}"',
+                cwd=manager_dir,  # Set working directory to where the manager is
+                shell=True,
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        
         elif system_platform in ["Linux", "Darwin"]:
             if not os.path.exists(VENV_DIR):  # Ensure virtual environment exists
                 print("Setting up virtual environment...")
@@ -193,8 +210,12 @@ def launch_manager():
                     return
 
             venv_python = os.path.join(VENV_DIR, "bin", "python3")
-            subprocess.run([venv_python, manager_path], check=True)
-
+            subprocess.Popen(
+                [venv_python, manager_path],
+                cwd=manager_dir,  # Set working directory
+                start_new_session=True
+            )
+            
         print("Modpack Manager launched successfully.")
 
         # Exit the launcher after starting the main manager
