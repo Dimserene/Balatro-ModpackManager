@@ -1,7 +1,7 @@
 {
   "latest_version": "1.9.3",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Fixed remove and backup Mods folder not overwriting default settings.",
+  "changelog": "- Now will automatically update manager and keep it up-to-date.\n- Fixed remove and backup Mods folder not overwriting default settings.\n- Fixed branch dropdown does not trigger auto guides.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],

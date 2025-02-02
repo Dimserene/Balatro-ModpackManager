@@ -110,6 +110,186 @@ LOGO_PATH =  os.path.join(SETTINGS_FOLDER, "logoNewYear.png")  # File name to sa
 
 MODPACKS_FOLDER = os.path.join(os.getcwd(), "Modpacks")  # Folder to store downloaded modpacks
 
+LIGHT_THEME = """
+    QWidget {
+        background-color: #fefefe;  /* Set background color */
+        color: #000000;  /* Set text color */
+    }
+                
+    QMainWindow, QDialog, QWidget {
+        background-color: #fefefe;  /* Force window background to white */
+    }
+                
+    QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox, QSpinBox {
+        color: #000000;
+    }
+
+    QLineEdit {
+        border: 1px solid gray;
+    }
+                
+    QPushButton {
+        border: 1px solid gray;
+        padding-top: 8px;   /* Equivalent to ipady */
+        padding-bottom: 8px; /* Equivalent to ipady */
+        padding-left: 5px;  /* Equivalent to ipadx */
+        padding-right: 5px; /* Equivalent to ipadx */
+        background-color: #fefefe;  /* Default background color */
+    }
+                
+    QPushButton:hover {
+        background-color: #dadada;  /* Hover color */
+    }
+                
+    QPushButton:pressed {
+        background-color: #fefefe;  /* Press color */
+    }
+                
+    QPushButton:disabled {
+        background-color: #e0e0e0;  /* Disabled background color */
+        color: #a0a0a0;  /* Disabled text color */
+        border: 1px solid #cccccc;  /* Disabled border color */
+    }
+                
+    QSpinBox {
+        padding: 10px;  /* Set padding for spinbox */
+        border: 1px solid gray;  /* Dropdown border */
+    }
+                
+    QComboBox {
+        padding: 6px;  /* Padding inside the dropdown */
+        font: 10pt 'Helvetica';  /* Font size for the dropdown */
+        background-color: #fefefe;  /* Default background color */
+        border: 1px solid gray;  /* Dropdown border */
+    }
+                
+    QComboBox QLineEdit {
+        padding: 20px;  /* Padding inside the editable field */
+        background-color: #fefefe;  /* Background color for editable field */
+        border: none;  /* Remove the border for the internal QLineEdit */
+    }
+                
+    QCheckBox {
+        background-color: transparent;  /* Transparent background for checkboxes */
+    }
+
+        QTabWidget::pane {
+        border: 1px solid #bbb;
+        padding: 6px;
+    }
+
+    QTabBar::tab {
+        color: black;
+        padding: 6px 14px;
+        border: 1px solid #aaa;
+        margin-right: 4px;
+        font-weight: bold;
+        font: 10pt 'Helvetica';
+        min-width: 110px;
+    }
+
+    QTabBar::tab:selected {
+        background: #0078d7;
+        color: white;
+        border: 1px solid #005ea0;
+    }
+    QTabBar::tab:hover {
+        background: #ccc;
+        color: white;
+    }
+                
+"""
+
+DARK_THEME = """
+    QWidget {
+        background-color: #222222;  /* Set background color */
+        color: #ffffff;  /* Set text color */
+    }
+                
+    QMainWindow, QDialog, QWidget {
+        background-color: #222222;  /* Force window background to white */
+    }
+                
+    QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox, QSpinBox {
+        color: #ffffff;
+    }
+
+    QLineEdit {
+        border: 1px solid gray;
+    }
+                
+    QPushButton {
+        border: 1px solid gray;
+        padding-top: 8px;   /* Equivalent to ipady */
+        padding-bottom: 8px; /* Equivalent to ipady */
+        padding-left: 5px;  /* Equivalent to ipadx */
+        padding-right: 5px; /* Equivalent to ipadx */
+        background-color: #222222;  /* Default background color */
+    }
+                
+    QPushButton:hover {
+        background-color: #dadada;  /* Hover color */
+    }
+                
+    QPushButton:pressed {
+        background-color: #222222;  /* Press color */
+    }
+                
+    QPushButton:disabled {
+        background-color: #e0e0e0;  /* Disabled background color */
+        color: #a0a0a0;  /* Disabled text color */
+        border: 1px solid #cccccc;  /* Disabled border color */
+    }
+                
+    QSpinBox {
+        padding: 10px;  /* Set padding for spinbox */
+        border: 1px solid gray;  /* Dropdown border */
+    }
+                
+    QComboBox {
+        padding: 6px;  /* Padding inside the dropdown */
+        font: 10pt 'Helvetica';  /* Font size for the dropdown */
+        background-color: #222222;  /* Default background color */
+        border: 1px solid gray;  /* Dropdown border */
+    }
+                
+    QComboBox QLineEdit {
+        padding: 20px;  /* Padding inside the editable field */
+        background-color: #222222;  /* Background color for editable field */
+        border: none;  /* Remove the border for the internal QLineEdit */
+    }
+                
+    QCheckBox {
+        background-color: transparent;  /* Transparent background for checkboxes */
+    }
+
+    QTabWidget::pane {
+        border: 1px solid #bbb;
+        padding: 6px;
+    }
+
+    QTabBar::tab {
+        color: white;
+        padding: 6px 14px;
+        border: 1px solid #aaa;
+        margin-right: 4px;
+        font-weight: bold;
+        font: 10pt 'Helvetica';
+        min-width: 110px;
+    }
+
+    QTabBar::tab:selected {
+        background: #0078d7;
+        color: white;
+        border: 1px solid #005ea0;
+    }
+    QTabBar::tab:hover {
+        background: #ccc;
+        color: black;
+    }
+                
+"""
+
 # Ensure the Mods folder and required files exist
 def ensure_settings_folder_exists():
     if not os.path.exists(SETTINGS_FOLDER):
@@ -729,6 +909,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Load settings (either default or user preferences)
         self.settings = self.load_settings()
 
+        # Load the last selected theme on startup
+        selected_theme = self.settings.get("theme", "Light")
+
+        if selected_theme == "Dark":
+            self.apply_theme(DARK_THEME)
+        elif selected_theme == "Light":
+            self.apply_theme(LIGHT_THEME)
+
         if system_platform == "Darwin":  # macOS
             self.game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             self.mods_dir = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
@@ -932,12 +1120,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Apply corresponding styles based on the selected modpack
         self.apply_modpack_styles(default_modpack)
 
-
         # **Update the description label for the initial selected modpack**
         self.update_modpack_description()
 
         # Connect the currentIndexChanged signal to the modpack change handler
         self.modpack_var.currentIndexChanged.connect(self.on_modpack_changed)
+        self.branch_var.currentIndexChanged.connect(self.on_modpack_changed)
 
         # Quick Update button
         self.update_button = QPushButton("Quick Update", self)
@@ -1196,38 +1384,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.general_tab = self.create_general_tab()
         self.installation_tab = self.create_installation_tab()
 
-        # 🎨 Apply Tab Styling
-        tab_widget.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #bbb;
-                padding: 6px;
-            }
-            QTabBar::tab {
-                color: white;
-                padding: 6px 14px;
-                border: 1px solid #aaa;
-                margin-right: 4px;
-                font-weight: bold;
-                font: 10pt 'Helvetica';
-                min-width: 110px;
-            }
-            QTabBar::tab:selected {
-                background: #0078d7;
-                color: white;
-                border: 1px solid #005ea0;
-            }
-            QTabBar::tab:hover {
-                background: #ccc;
-                color: black;
-            }
-        """)
-
         # Add tabs
         general_tab = self.create_general_tab()
         installation_tab = self.create_installation_tab()
+        theme_tab = self.create_theme_tab()
 
         tab_widget.addTab(general_tab, "⚙ General")
         tab_widget.addTab(installation_tab, "🔧 Installation")
+        tab_widget.addTab(theme_tab, "✨ Theme")
 
         # Main Layout
         main_layout = QVBoxLayout(popup)
@@ -1256,27 +1420,19 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         game_dir_label = QLabel("Game Directory:")
         self.game_dir_entry = QLineEdit(self.settings["game_directory"])
         self.game_dir_entry.setFixedHeight(30)
-        self.game_dir_entry.setStyleSheet("""
-            QLineEdit {
-                background-color: #222222;
-                border: 1px solid #999;
-                padding: 4px;
-                font: 10pt 'Helvetica';
-            }
-        """)
         
         self.game_dir_entry.textChanged.connect(lambda: self.save_settings(game_directory=self.game_dir_entry.text()))
 
         default_game_dir_button = QPushButton("Default")
-        default_game_dir_button.setFixedSize(70, 30)
+        default_game_dir_button.setFixedSize(100, 30)
         default_game_dir_button.clicked.connect(lambda: self.reset_to_default(self.game_dir_entry))
 
         browse_game_dir_button = QPushButton("Browse")
-        browse_game_dir_button.setFixedSize(70, 30)
+        browse_game_dir_button.setFixedSize(100, 30)
         browse_game_dir_button.clicked.connect(lambda: self.browse_directory(self.game_dir_entry))
 
         open_game_dir_button = QPushButton("Open")
-        open_game_dir_button.setFixedSize(70, 30)
+        open_game_dir_button.setFixedSize(100, 30)
         open_game_dir_button.clicked.connect(lambda: self.open_directory(self.game_dir_entry.text()))
 
         # Layout for buttons BELOW the directory field
@@ -1298,17 +1454,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.mods_dir_entry = QLineEdit(os.path.expandvars(self.settings["mods_directory"]))
         self.mods_dir_entry.setReadOnly(True)  # Make it non-editable
         self.mods_dir_entry.setFixedHeight(30)
-        self.mods_dir_entry.setStyleSheet("""
-            QLineEdit {
-                background-color: #222222;
-                border: 1px solid #999;
-                padding: 4px;
-                font: 10pt 'Helvetica';
-            }
-        """)
 
         open_mods_dir_button = QPushButton("Open")
-        open_mods_dir_button.setFixedSize(70, 30)
+        open_mods_dir_button.setFixedSize(100, 30)
         open_mods_dir_button.clicked.connect(lambda: self.open_directory(self.mods_dir_entry.text()))
 
         # Layout for Mods directory button BELOW input field
@@ -1325,16 +1473,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.profile_name_var = QComboBox()
         self.profile_name_var.addItems(exe_files)
         self.profile_name_var.setCurrentText(self.settings["profile_name"])
-        self.profile_name_var.setStyleSheet("""
-            QComboBox {
-                padding: 6px;
-                font: 10pt 'Helvetica';
-                background-color: #222222;
-            }
-        """)
 
         profile_name_set_button = QPushButton("Set/Create")
-        profile_name_set_button.setFixedSize(70, 30)
+        profile_name_set_button.setFixedSize(100, 30)
         profile_name_set_button.clicked.connect(lambda: self.set_profile_name(self.profile_name_var.currentText(), self.mods_dir_entry))
 
         profile_button_layout = QHBoxLayout()
@@ -1397,6 +1538,51 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         tab.setLayout(layout)
         return tab
     
+    def create_theme_tab(self):
+        """Create the Theme settings tab."""
+
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
+        layout.setSpacing(12)  # Reduce spacing between elements
+
+        # Label for Theme Selection
+        theme_label = QLabel("Select Theme:")
+        layout.addWidget(theme_label)
+
+        # Theme Dropdown
+        self.theme_dropdown = QComboBox()
+        self.theme_dropdown.addItems(["Light", "Dark"])
+        self.theme_dropdown.setFixedSize(100, 30)
+        
+        # Load saved theme preference
+        current_theme = self.settings.get("theme", "Light")
+        if current_theme in ["Light", "Dark"]:
+            self.theme_dropdown.setCurrentText(current_theme)
+        
+        self.theme_dropdown.currentIndexChanged.connect(self.apply_selected_theme)
+        layout.addWidget(self.theme_dropdown)
+
+        tab.setLayout(layout)
+        return tab
+
+    def apply_selected_theme(self):
+        """Apply the selected theme from the dropdown and save preference."""
+        selected_theme = self.theme_dropdown.currentText()
+        
+        if selected_theme == "Dark":
+            self.apply_theme(DARK_THEME)
+        elif selected_theme == "Light":
+            self.apply_theme(LIGHT_THEME)
+
+        # Save the selected theme to settings
+        self.save_settings(theme=selected_theme)
+
+    def apply_theme(self, theme):
+        """Apply the selected theme."""
+        self.setStyleSheet(theme)
+        QApplication.instance().setStyleSheet(theme)
+
     def update_descriptions(self):
         """Dynamically update descriptions based on checkbox states."""
         if hasattr(self, "backup_description"):
@@ -1445,7 +1631,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def save_settings(self, game_directory=None, mods_directory=None, profile_name=None, 
                     default_modpack=None, backup_mods=None, remove_mods=None, auto_install=None, 
-                    skip_mod_selection=None, modpack_downloaded=None, modpack_installed=None):
+                    skip_mod_selection=None, modpack_downloaded=None, modpack_installed=None, theme=None):
         """Save settings to the JSON file, handling optional arguments and UI values."""
 
         # Update settings dictionary with provided values
@@ -1469,6 +1655,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.settings["modpack_downloaded"] = modpack_downloaded
         if modpack_installed is not None:
             self.settings["modpack_installed"] = modpack_installed
+        if theme is not None:
+            self.settings["theme"] = theme
 
         # Write settings to the JSON file
         try:
@@ -1754,49 +1942,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             msg_box.setText("Your operating system is not supported for launching the game.")
             msg_box.exec()
 
-
-    def apply_coonies_play_button_style(self):
-        """ Apply Coonie's Modpack play button color (Purple) """
-        self.play_button.setStyleSheet("""
-            QPushButton {
-                background-color: #5e00bd;  /* Purple for Coonie's Modpack */
-                color: white;
-                padding: 10px;
-                font: 30pt 'Helvetica';
-                border: 2px solid transparent;
-            }
-            QPushButton:hover {
-                background-color: #4700a3;  /* Darker Purple on hover */
-                border: 2px solid #34006b;  /* Dark Purple border on hover */
-            }
-            QPushButton:pressed {
-                background-color: #34006b;  /* Even darker Purple on press */
-                padding-top: 12px;
-                padding-bottom: 8px;
-            }
-        """)
-
-    def apply_elbes_play_button_style(self):
-        """ Apply Elbe's Modpack play button color (Dark Blue) """
-        self.play_button.setStyleSheet("""
-            QPushButton {
-                background-color: #003366;  /* Dark Blue for Elbe's Modpack */
-                color: white;
-                padding: 10px;
-                font: 30pt 'Helvetica';
-                border: 2px solid transparent;
-            }
-            QPushButton:hover {
-                background-color: #002a5c;  /* Darker Blue on hover */
-                border: 2px solid #001f45;  /* Dark Blue border on hover */
-            }
-            QPushButton:pressed {
-                background-color: #001f45;  /* Even darker Blue on press */
-                padding-top: 12px;
-                padding-bottom: 8px;
-            }
-        """)
-
     def apply_default_play_button_style(self):
         """ Apply default play button color (Green) """
         self.play_button.setStyleSheet("""
@@ -2009,9 +2154,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if hasattr(self, "blink_timer") and self.blink_timer:
             if self.blink_timer.isActive():
                 self.blink_timer.stop()
-            self.download_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
-            self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
-            self.install_lovely_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+            self.download_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
+            self.install_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
+            self.install_lovely_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
 
         if not lovely_injector_installed:
             self.blink_button(self.install_lovely_button)
@@ -2041,9 +2186,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Toggle button color for blinking effect."""
         self.blink_state = not self.blink_state
         if self.blink_state:
-            button.setStyleSheet("background-color: rgba(255, 255, 150, 180); color: white; font: 12pt 'Helvetica'")  # Red Blink
+            button.setStyleSheet("background-color: rgba(255, 255, 150, 180); font: 12pt 'Helvetica'")  # Red Blink
         else:
-            button.setStyleSheet("background-color: none;; color: white; font: 12pt 'Helvetica'")  # Reset to default
+            button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset to default
 
     def download_modpack(self, main_window=None, clone_url=None):
         """Download the selected modpack with a prompt for overwriting."""
@@ -2087,18 +2232,34 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setWindowModality(Qt.WindowModality.ApplicationModal)  # Modal
         self.progress_dialog.setAutoClose(True)
         self.progress_dialog.setAutoReset(True)
-        self.progress_dialog.setStyleSheet("""
-            QProgressDialog {
-                border: 3px solid #555;
-                background-color: #222222;
-            }
-            QLabel {
-                font: 24px 'Helvetica';
-                font-weight: bold;
-                color: #ffffff;
-                background-color: transparent;
-            }
-        """)
+
+        if self.settings.get("theme") == "Light":
+            self.progress_dialog.setStyleSheet("""
+                QProgressDialog {
+                    border: 3px solid #555;
+                    background-color: #fefefe;
+                }
+                QLabel {
+                    font: 24px 'Helvetica';
+                    font-weight: bold;
+                    color: #000000;
+                    background-color: transparent;
+                }
+            """)
+
+        elif self.settings.get("theme") == "Dark":
+            self.progress_dialog.setStyleSheet("""
+                QProgressDialog {
+                    border: 3px solid #555;
+                    background-color: #222222;
+                }
+                QLabel {
+                    font: 24px 'Helvetica';
+                    font-weight: bold;
+                    color: #ffffff;
+                    background-color: transparent;
+                }
+            """)
 
         # Create a custom QLabel for the message with the modpack name
         self.label = QLabel(f"Downloading {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
@@ -2184,7 +2345,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if hasattr(self, "blink_timer") and self.blink_timer:
             if self.blink_timer.isActive():
                 self.blink_timer.stop()
-                self.download_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+                self.download_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
 
         # Now start blinking the Install button
         self.blink_button(self.install_button)
@@ -2274,18 +2435,34 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setWindowModality(Qt.WindowModality.ApplicationModal)  # Modal
         self.progress_dialog.setAutoClose(True)
         self.progress_dialog.setAutoReset(True)
-        self.progress_dialog.setStyleSheet("""
-            QProgressDialog {
-                border: 3px solid #555;
-                background-color: #222222;
-            }
-            QLabel {
-                font: 24px 'Helvetica';
-                font-weight: bold;
-                color: #ffffff;
-                background-color: transparent;
-            }
-        """)
+
+        if self.settings.get("theme") == "Light":
+            self.progress_dialog.setStyleSheet("""
+                QProgressDialog {
+                    border: 3px solid #555;
+                    background-color: #fefefe;
+                }
+                QLabel {
+                    font: 24px 'Helvetica';
+                    font-weight: bold;
+                    color: #000000;
+                    background-color: transparent;
+                }
+            """)
+
+        elif self.settings.get("theme") == "Dark":
+            self.progress_dialog.setStyleSheet("""
+                QProgressDialog {
+                    border: 3px solid #555;
+                    background-color: #222222;
+                }
+                QLabel {
+                    font: 24px 'Helvetica';
+                    font-weight: bold;
+                    color: #ffffff;
+                    background-color: transparent;
+                }
+            """)
 
         # Create a custom QLabel for the message with the modpack name
         self.label = QLabel(f"Updating {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
@@ -2598,7 +2775,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             # Add a star label for favorite mods
             star_label = QLabel("★" if mod in self.favorite_mods else "☆", popup)
-            star_label.setStyleSheet("font-size: 20px; color: white;")
+
+            if self.settings.get("theme") == "Light":
+                star_label.setStyleSheet("font-size: 20px; color: black;")
+
+            elif self.settings.get("theme") == "Dark":
+                star_label.setStyleSheet("font-size: 20px; color: white;")
+
             star_label.setCursor(Qt.CursorShape.PointingHandCursor)  # Clickable star
             star_label.mousePressEvent = lambda _, mod=mod, label=star_label: toggle_favorite(label, mod)
 
@@ -3043,7 +3226,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if hasattr(self, "blink_timer") and self.blink_timer:
                 if self.blink_timer.isActive():
                     self.blink_timer.stop()
-                    self.install_button.setStyleSheet("background-color: none; color: white; font: 12pt 'Helvetica'")  # Reset style
+                    self.install_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
 
         except Exception as e:
             progress_dialog.close()
@@ -3367,6 +3550,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             success_box.setText("Lovely Injector installed successfully.")
             success_box.exec()
 
+            # Stop any existing blinking safely
+            if hasattr(self, "blink_timer") and self.blink_timer:
+                if self.blink_timer.isActive():
+                    self.blink_timer.stop()
+                self.download_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
+                self.install_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
+                self.install_lovely_button.setStyleSheet("background-color: none; font: 12pt 'Helvetica'")  # Reset style
+
         except requests.RequestException as e:
             QMessageBox.critical(None, "Error", f"Failed to download Lovely Injector: {e}")
             if os.path.exists(archive_path):
@@ -3454,68 +3645,6 @@ if __name__ == "__main__":
     app = QApplication([])  # Initialize the QApplication
 
     root = ModpackManagerApp()  # No need to pass 'root', since the window is handled by PyQt itself
-
-    # Set global stylesheet to apply a 1pt gray border to all QPushButtons
-    app.setStyleSheet("""
-        QWidget {
-            background-color: #222222;  /* Set background color */
-            color: #ffffff;  /* Set text color */
-        }
-                    
-        QMainWindow, QDialog, QWidget {
-            background-color: #222222;  /* Force window background to white */
-        }
-                    
-        QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox, QSpinBox {
-            color: #ffffff;
-        }
-                    
-        QPushButton {
-            border: 1px solid gray;
-            padding-top: 8px;   /* Equivalent to ipady */
-            padding-bottom: 8px; /* Equivalent to ipady */
-            padding-left: 5px;  /* Equivalent to ipadx */
-            padding-right: 5px; /* Equivalent to ipadx */
-            background-color: #222222;  /* Default background color */
-        }
-                    
-        QPushButton:hover {
-            background-color: #dadada;  /* Hover color */
-        }
-                    
-        QPushButton:pressed {
-            background-color: #222222;  /* Press color */
-        }
-                    
-        QPushButton:disabled {
-            background-color: #e0e0e0;  /* Disabled background color */
-            color: #a0a0a0;  /* Disabled text color */
-            border: 1px solid #cccccc;  /* Disabled border color */
-        }
-                    
-        QSpinBox {
-            padding: 10px;  /* Set padding for spinbox */
-            border: 1px solid gray;  /* Dropdown border */
-        }
-                    
-        QComboBox {
-            padding: 6px;  /* Padding inside the dropdown */
-            font: 10pt 'Helvetica';  /* Font size for the dropdown */
-            background-color: #222222;  /* Default background color */
-            border: 1px solid gray;  /* Dropdown border */
-        }
-                    
-        QComboBox QLineEdit {
-            padding: 20px;  /* Padding inside the editable field */
-            background-color: #222222;  /* Background color for editable field */
-            border: none;  /* Remove the border for the internal QLineEdit */
-        }
-                    
-        QCheckBox {
-            background-color: transparent;  /* Transparent background for checkboxes */
-        }
-                    
-    """)
 
     # Center the window
     screen_geometry = app.primaryScreen().availableGeometry()
