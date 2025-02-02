@@ -5,8 +5,6 @@ import shutil
 import subprocess
 import time
 import sys
-from tqdm import tqdm  # Import tqdm for the progress bar
-
 
 # Detect system platform
 system_platform = platform.system()
@@ -100,18 +98,18 @@ def download_update(download_url):
 
         new_exe_path = os.path.join(MANAGER_FOLDER, DOWNLOAD_NAME)
         total_size = int(response.headers.get("content-length", 0))  # Get total file size
+        downloaded_size = 0
 
-        # Show progress bar while downloading
-        with open(new_exe_path, "wb") as file, tqdm(
-            desc="Downloading update",
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as progress:
+        print("Downloading update...")
+
+        with open(new_exe_path, "wb") as file:
             for chunk in response.iter_content(chunk_size=8192):
                 file.write(chunk)
-                progress.update(len(chunk))
+                downloaded_size += len(chunk)
+
+                # Simple progress indicator
+                percent = (downloaded_size / total_size) * 100 if total_size else 0
+                print(f"\rProgress: {percent:.2f}% ({downloaded_size // 1024} KB / {total_size // 1024} KB)", end="")
 
         # Verify the downloaded file exists and is not empty
         if os.path.exists(new_exe_path) and os.path.getsize(new_exe_path) > 0:
