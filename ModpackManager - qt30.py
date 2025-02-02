@@ -318,19 +318,19 @@ DARK_THEME = """
     }
 
     QCheckBox::indicator:unchecked {
-        image: url("ManagerSettings/assets/icons8-checkbox-unchecked.png");
+        image: url("ManagerSettings/assets/icons8-checkbox-uncheckedwhite.png");
     }
 
     QCheckBox::indicator:unchecked:hover {
-        image: url("ManagerSettings/assets/icons8-checkbox-hoverunchecked.png");
+        image: url("ManagerSettings/assets/icons8-checkbox-uncheckedwhite.png");
     }
 
     QCheckBox::indicator:checked {
-        image: url("ManagerSettings/assets/icons8-checkbox-checked.png");
+        image: url("ManagerSettings/assets/icons8-checkbox-checkedwhite.png");
     }
 
     QCheckBox::indicator:checked:hover {
-        image: url("ManagerSettings/assets/icons8-checkbox-hoverchecked.png");
+        image: url("ManagerSettings/assets/icons8-checkbox-checkedwhite.png");
     }
                 
 """
