@@ -193,10 +193,32 @@ LIGHT_THEME = """
         color: white;
         border: 1px solid #005ea0;
     }
+
     QTabBar::tab:hover {
         background: #ccc;
         color: white;
     }
+
+    QCheckBox::indicator {
+        width: 24px; /* Set icon size */
+        height: 24px;
+    }
+
+    QCheckBox::indicator:unchecked {
+        image: url('assets/checkbox_unchecked.png');
+    }
+
+    QCheckBox::indicator:unchecked:hover {
+        image: url('assets/checkbox_unchecked_hover.png');
+    }
+
+    QCheckBox::indicator:checked {
+        image: url('assets/checkbox_checked.png');
+    }
+
+    QCheckBox::indicator:checked:hover {
+        image: url('assets/checkbox_checked_hover.png');
+    } 
                 
 """
 
