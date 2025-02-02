@@ -5,19 +5,19 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## Table of Contents
-- [1.9.3 - 2025-02-02](#193---2025-02-02)
-- [1.9.2 - 2025-02-01](#192---2025-02-01)
-- [1.9.1 - 2025-01-31](#191---2025-01-31)
-- [1.9.0 - 2025-01-30](#190---2025-01-30)
-- [1.8.x Releases](#18x-releases)
-- [1.7.x Releases](#17x-releases)
-- [1.6.x Releases](#16x-releases)
-- [1.5.x Releases](#15x-releases)
-- [1.4.x Releases](#14x-releases)
-- [Older Versions](#older-versions)
+- [1.9 Releases](#193---2025-02-02)
+- [1.8 Releases](#182---2025-01-29)
+- [1.7 Releases](#170---2025-01-15)
+- [1.6 Releases](#1611---2025-01-10)
+- [1.5 Releases](#157---2024-12-28)
+- [1.4 Releases](#145---2024-10-19)
+- [1.3 Releases](#131---2024-09-08)
+- [1.2 Releases](#126---2024-08-29)
+- [1.1 Releases](#113---2024-08-24)
+- [1.0 Releases](#100---2024-08-20)
+- [0.x Releases](#060---2024-08-19)
 
 ---
-
 
 ## [1.9.3] - 2025-02-02
 ### Added
