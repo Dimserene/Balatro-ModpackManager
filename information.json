@@ -1,7 +1,7 @@
 {
   "latest_version": "1.9.3",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Now will automatically update manager and keep it up-to-date.\n- Fixed remove and backup Mods folder not overwriting default settings.\n- Fixed branch dropdown does not trigger auto guides.",
+  "changelog": "- Added Light/Dark mode in settings.\n- Now will automatically update manager and keep it up-to-date.\n- Fixed checkboxes invisible problem.\n- Fixed remove and backup Mods folder not overwriting default settings.\n- Fixed branch dropdown does not trigger auto guides.\n- Bug fixes.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],

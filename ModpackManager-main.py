@@ -1019,7 +1019,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.initialize_branches()   # List all branches on startup
         self.update_branch_dropdown()
         self.update_installed_info()  # Initial update
-        self.check_for_updates()
 
         # Create a reference to the worker thread
         self.worker = None
@@ -1051,42 +1050,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Call the default closeEvent to continue closing the window
         super(ModpackManagerApp, self).closeEvent(event)
-
-    def check_for_updates(self):
-        """
-        Check if an update is available for the manager.
-        """
-        latest_version_str = self.modpack_data.get("latest_version", None)
-        if not latest_version_str:
-            QMessageBox.warning(self, "Update Check", "Could not fetch the latest version information.")
-            return
-
-        try:
-            latest_version = Version(latest_version_str)
-        except ValueError:
-            QMessageBox.warning(self, "Update Check", f"Invalid version format: {latest_version_str}")
-            return
-
-        if VERSION < latest_version:
-            # Close the splash screen if it's still open
-            if hasattr(self, "splash") and self.splash.isVisible():
-                self.splash.finish(self)
-            self.prompt_update(latest_version_str, self.modpack_data.get("download_url"), self.modpack_data.get("changelog"))
-
-    def prompt_update(self, latest_version, download_url, changelog):
-        """Prompt the user to update if a new version is available."""
-        response = QMessageBox.question(
-            self,
-            "New Version Available",
-            f"A new version ({latest_version}) of the modpack is available.\n\nChangelog:\n{changelog}\n\nDo you want to download it?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-
-        # Open the download URL only if the user clicked "Ok"
-        if response == QMessageBox.StandardButton.Ok:
-            webbrowser.open(download_url)
-                
+        
     def apply_modpack_styles(self, modpack_name):
         """Apply styles to UI elements based on the selected modpack"""
         if modpack_name == "Coonie's Modpack":

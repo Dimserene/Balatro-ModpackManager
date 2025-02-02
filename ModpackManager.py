@@ -54,9 +54,9 @@ def fetch_latest_version():
         latest_version = response.url.split("/")[-1]
         
         if system_platform == "Windows":
-            download_url = "https://github.com/Dimserene/Balatro-ModpackManager/releases/latest/download/ModpackManager.exe"
+            download_url = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/dist/ModpackManager-main.exe"
         elif system_platform in ["Linux", "Darwin"]:
-            download_url = "https://github.com/Dimserene/Balatro-ModpackManager/releases/latest/download/ModpackManager.py"
+            download_url = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/ModpackManager-main.py"
         else:
             print("Unsupported OS detected. Exiting.")
             return None, None
