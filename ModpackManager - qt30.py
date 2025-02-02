@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSpl
 from git import Repo, GitCommandError
 from packaging.version import Version
 import pandas as pd
-
+from io import BytesIO
 
 ############################################################
 # Detect OS and set default settings
@@ -97,7 +97,7 @@ elif system_platform == "Darwin":
         "modpack_installed": "",
     }
 
-    
+ASSETS_FOLDER = os.path.join(SETTINGS_FOLDER, "assets")
 SETTINGS_FILE = os.path.join(SETTINGS_FOLDER, "user_settings.json")
 INSTALL_FILE = os.path.join(SETTINGS_FOLDER, "excluded_mods.json")
 FAVORITES_FILE = os.path.join(SETTINGS_FOLDER, "favorites.json")
@@ -106,7 +106,9 @@ CACHE_FILE = os.path.join(SETTINGS_FOLDER, "modpack_cache.json")
 CSV_CACHE_FILE = os.path.join(SETTINGS_FOLDER, "cached_data.csv")
 
 LOGO_URL = "https://raw.githubusercontent.com/Dimserene/Dimserenes-Modpack/refs/heads/main/NewFullPackLogo%20New%20Year.png"
-LOGO_PATH =  os.path.join(SETTINGS_FOLDER, "logoNewYear.png")  # File name to save the downloaded logo
+LOGO_PATH = os.path.join(ASSETS_FOLDER, "logoNewYear.png")  # File name to save the downloaded logo
+
+CHECKBOX_URL = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/assets/assets.zip"
 
 MODPACKS_FOLDER = os.path.join(os.getcwd(), "Modpacks")  # Folder to store downloaded modpacks
 
@@ -200,26 +202,26 @@ LIGHT_THEME = """
     }
 
     QCheckBox::indicator {
-        width: 24px; /* Set icon size */
+        width: 24px;
         height: 24px;
     }
 
     QCheckBox::indicator:unchecked {
-        image: url('assets/checkbox_unchecked.png');
+        image: url("ManagerSettings/assets/icons8-checkbox-unchecked.png");
     }
 
     QCheckBox::indicator:unchecked:hover {
-        image: url('assets/checkbox_unchecked_hover.png');
+        image: url("ManagerSettings/assets/icons8-checkbox-hoverunchecked.png");
     }
 
     QCheckBox::indicator:checked {
-        image: url('assets/checkbox_checked.png');
+        image: url("ManagerSettings/assets/icons8-checkbox-checked.png");
     }
 
     QCheckBox::indicator:checked:hover {
-        image: url('assets/checkbox_checked_hover.png');
-    } 
-                
+        image: url("ManagerSettings/assets/icons8-checkbox-hoverchecked.png");
+    }
+         
 """
 
 DARK_THEME = """
@@ -309,14 +311,43 @@ DARK_THEME = """
         background: #ccc;
         color: black;
     }
+
+    QCheckBox::indicator {
+        width: 24px;
+        height: 24px;
+    }
+
+    QCheckBox::indicator:unchecked {
+        image: url("ManagerSettings/assets/icons8-checkbox-unchecked.png");
+    }
+
+    QCheckBox::indicator:unchecked:hover {
+        image: url("ManagerSettings/assets/icons8-checkbox-hoverunchecked.png");
+    }
+
+    QCheckBox::indicator:checked {
+        image: url("ManagerSettings/assets/icons8-checkbox-checked.png");
+    }
+
+    QCheckBox::indicator:checked:hover {
+        image: url("ManagerSettings/assets/icons8-checkbox-hoverchecked.png");
+    }
                 
 """
+
+def get_assets_path(filename):
+    """Get the absolute path for assets."""
+    return os.path.abspath(os.path.join("ManagerSettings", "assets", filename))
 
 # Ensure the Mods folder and required files exist
 def ensure_settings_folder_exists():
     if not os.path.exists(SETTINGS_FOLDER):
         os.makedirs(SETTINGS_FOLDER)
-        print(f"Created Mods folder at: {SETTINGS_FOLDER}")
+        print(f"Created Settings folder at: {SETTINGS_FOLDER}")
+
+    if not os.path.exists(ASSETS_FOLDER):
+        os.makedirs(ASSETS_FOLDER)
+        print(f"Created Assets folder at: {ASSETS_FOLDER}")
 
     # Create default JSON files if they don't exist
     for file_path, default_content in [
@@ -374,6 +405,23 @@ def download_logo(url, save_path):
     except requests.RequestException as e:
         print(f"Failed to download logo: {e}")
         exit(1)
+
+def download_and_extract_icons(url):
+    """Download and extract icons from the specified URL into ManagerSettings/assets."""
+
+    try:
+        # Download the ZIP file
+        response = requests.get(url)
+        response.raise_for_status()  # Check for request errors
+
+        # Extract the ZIP file into the assets directory
+        with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
+            zip_ref.extractall(ASSETS_FOLDER)
+
+        print("Icons downloaded and extracted successfully.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def remove_debug_folders(mods_directory):
     """
@@ -900,6 +948,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             Qt.GlobalColor.black,
         )
         self.splash.show()
+
+        download_and_extract_icons(CHECKBOX_URL)
 
         # Flags to track whether the popups are open
         self.settings_popup_open = False
