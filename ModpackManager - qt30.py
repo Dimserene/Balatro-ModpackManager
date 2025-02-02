@@ -12,9 +12,9 @@ import pandas as pd
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/01"
+DATE = "2025/02/02"
 ITERATION = "30"
-VERSION = Version("1.9.2")  # Current version of the Modpack Manager
+VERSION = Version("1.9.3")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
