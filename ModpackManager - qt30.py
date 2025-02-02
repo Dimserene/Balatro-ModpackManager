@@ -2943,59 +2943,52 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         elif system_platform in ["Windows", "Linux"]:
             mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
 
+        # Ensure source Mods directory exists
+        if not os.path.isdir(mods_src):
+            QMessageBox.critical(self, "Error", "Source Mods folder not found. Installation aborted.")
+            return
+
         # Check if the Mods directory exists
-        if os.path.isdir(mods_dir):
-            # Determine if backup is enabled
-            backup_mods = self.settings.get("backup_mods", False)
+        if os.path.isdir(mods_dir) and self.backup_checkbox.isChecked():
+            # Create a timestamped backup folder name
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            backup_folder = os.path.join(os.path.dirname(mods_dir), f"Mods-backup-{timestamp}")
 
-            if backup_mods:
-                # Create a timestamped backup folder name
-                timestamp = time.strftime("%Y%m%d-%H%M%S")
-                backup_folder = os.path.join(os.path.dirname(mods_dir), f"Mods-backup-{timestamp}")
+            try:
+                # Move the Mods directory to the backup folder
+                shutil.move(mods_dir, backup_folder)
+                QMessageBox.information(
+                    self, 
+                    "Backup Successful", 
+                    f"Mods folder successfully backed up to:\n{backup_folder}"
+                )
+            except Exception as e:
+                # Show error message if backup fails
+                QMessageBox.critical(self, "Error", f"Failed to backup Mods folder. Error: {str(e)}")
+                return
 
-                try:
-                    # Move the Mods directory to the backup folder
-                    shutil.move(mods_dir, backup_folder)
-                    QMessageBox.information(
-                        self, 
-                        "Backup Successful", 
-                        f"Mods folder successfully backed up to:\n{backup_folder}"
-                    )
-                except Exception as e:
-                    # Show error message if backup fails
-                    QMessageBox.critical(self, "Error", f"Failed to backup Mods folder. Error: {str(e)}")
-                    return
+        if self.remove_checkbox.isChecked():
 
-            # Remove existing mods folder if enabled
-            remove_mods = self.settings.get("remove_mods", False)
+            # Warning message box
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("Warning")
+            msg_box.setText("The current 'Mods' folder will be erased. Do you want to proceed?")
+            msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            response = msg_box.exec()
 
-            if remove_mods:
-                # Platform-specific path resolution
-                if system_platform == "Darwin":  # macOS
-                    mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
-                elif system_platform in ["Windows", "Linux"]:
-                    mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
+            if response == QMessageBox.StandardButton.No:
+                return
 
-                # Warning message box
-                msg_box = QMessageBox()
-                msg_box.setIcon(QMessageBox.Icon.Warning)
-                msg_box.setWindowTitle("Warning")
-                msg_box.setText("The current 'Mods' folder will be erased. Do you want to proceed?")
-                msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-                response = msg_box.exec()
-
-                if response == QMessageBox.StandardButton.No:
-                    return
-
-                try:
-                    # Remove the Mods directory
-                    if os.path.exists(mods_dir):
-                        shutil.rmtree(mods_dir, ignore_errors=True)
-                        QMessageBox.information(self, "Success", "The 'Mods' folder has been removed successfully.")
-                    else:
-                        QMessageBox.warning(self, "Warning", "The 'Mods' folder does not exist.")
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to remove Mods folder. Error: {str(e)}")
+            try:
+                # Remove the Mods directory
+                if os.path.exists(mods_dir):
+                    shutil.rmtree(mods_dir, ignore_errors=True)
+                    QMessageBox.information(self, "Success", "The 'Mods' folder has been removed successfully.")
+                else:
+                    QMessageBox.warning(self, "Warning", "The 'Mods' folder does not exist.")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to remove Mods folder. Error: {str(e)}")
 
         # Create a progress dialog
         progress_dialog = QProgressDialog("Installing mods...", "Cancel", 0, 100, self)
@@ -3010,11 +3003,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         filtered_mods = [mod for mod in all_mods if mod not in excluded_mods or mod in mandatory_mods]
 
         try:
-            # Resolve mods directory based on platform
-            if system_platform == "Darwin":  # macOS
-                mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
-            elif system_platform in ["Windows", "Linux"]:
-                mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
+
+            # Ensure Mods directory exists
+            os.makedirs(mods_dir, exist_ok=True)
 
             # Iterate through mods and copy them
             total_mods = len(filtered_mods)
@@ -3035,9 +3026,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
                 # Perform the copy operation
                 try:
-                    if os.path.exists(destination_mod_path):
-                        shutil.rmtree(destination_mod_path)
-                    shutil.copytree(source_mod_path, destination_mod_path)
+                    shutil.copytree(source_mod_path, destination_mod_path, dirs_exist_ok=True)
                 except Exception as copy_error:
                     QMessageBox.warning(self, "Copy Error", f"Failed to copy {mod}. Error: {copy_error}")
 
