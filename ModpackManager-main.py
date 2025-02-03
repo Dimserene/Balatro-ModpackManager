@@ -1,7 +1,8 @@
-import git, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
+import tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
 from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+import git
 from git import Repo, GitCommandError
 from packaging.version import Version
 from urllib.parse import urlparse
