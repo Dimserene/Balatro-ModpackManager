@@ -225,6 +225,29 @@ LIGHT_THEME = """
     QCheckBox::indicator:checked:hover {
         image: url("ManagerSettings/assets/icons8-checkbox-hoverchecked.png");
     }
+
+    QMenu {
+        background-color: #fefefe;  /* Dark background */
+        border: 1px solid #555;  /* Slightly lighter border */
+        padding: 5px;
+        font-size: 14px;
+        color: black;
+    }
+    
+    QMenu::item {
+        padding: 5px 20px;
+    }
+
+    QMenu::item:selected {
+        background-color: #454545;  /* Hover effect */
+        color: #000000;
+    }
+
+    QMenu::separator {
+        height: 1px;
+        background: #666;  /* Separator color */
+        margin: 5px 10px;
+    }
          
 """
 
@@ -336,7 +359,30 @@ DARK_THEME = """
     QCheckBox::indicator:checked:hover {
         image: url("ManagerSettings/assets/icons8-checkbox-checkedwhite.png");
     }
-                
+      
+    QMenu {
+        background-color: #222222;  /* Dark background */
+        border: 1px solid #555;  /* Slightly lighter border */
+        padding: 5px;
+        font-size: 14px;
+        color: white;
+    }
+    
+    QMenu::item {
+        padding: 5px 20px;
+    }
+
+    QMenu::item:selected {
+        background-color: #454545;  /* Hover effect */
+        color: #ffffff;
+    }
+
+    QMenu::separator {
+        height: 1px;
+        background: #666;  /* Separator color */
+        margin: 5px 10px;
+    }
+
 """
 
 def get_assets_path(filename):
@@ -1602,26 +1648,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 action = links_menu.addAction(label)
                 action.triggered.connect(lambda checked, url=url: webbrowser.open(url))
 
-        # Set menu as a top-level popup
-        links_menu.setWindowFlags(Qt.WindowType.Popup)
+        # Show the menu under the "Links" button
+        links_menu.exec(self.links_button.mapToGlobal(self.links_button.rect().bottomLeft()))
 
-        # Calculate the global position of the button
-        button_rect = self.links_button.geometry()
-        global_pos = self.links_button.mapToGlobal(button_rect.bottomLeft())
-
-        # Adjust position to ensure it's fully visible
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
-        menu_size = links_menu.sizeHint()
-
-        if global_pos.y() + menu_size.height() > screen_geometry.height():
-            global_pos.setY(global_pos.y() - menu_size.height() - button_rect.height())  # Move menu above button if needed
-
-        if global_pos.x() + menu_size.width() > screen_geometry.width():
-            global_pos.setX(screen_geometry.width() - menu_size.width())  # Adjust for right edge
-
-        # Show the menu at the adjusted global position
-        links_menu.exec(global_pos)
-        
 ############################################################
 # Foundation of tutorial
 ############################################################
