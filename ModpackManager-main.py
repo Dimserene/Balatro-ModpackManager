@@ -1,8 +1,7 @@
-import tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
+import git, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
 from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
-import git
 from git import Repo, GitCommandError
 from packaging.version import Version
 from urllib.parse import urlparse
@@ -38,6 +37,7 @@ if system_platform == "Windows":
         "skip_mod_selection": False,
         "auto_install": False,
         "debug_mode": False,
+        "disable_rainbow_title": False,
         "modpack_downloaded": "",
         "modpack_installed": "",
     }
@@ -62,6 +62,7 @@ elif system_platform == "Linux":
             "skip_mod_selection": False,
             "auto_install": False,
             "debug_mode": False,
+            "disable_rainbow_title": False,
             "modpack_downloaded": "",
             "modpack_installed": "",
         }
@@ -78,6 +79,7 @@ elif system_platform == "Linux":
             "skip_mod_selection": False,
             "auto_install": False,
             "debug_mode": False,
+            "disable_rainbow_title": False,
             "modpack_downloaded": "",
             "modpack_installed": "",
         }
@@ -94,6 +96,7 @@ elif system_platform == "Darwin":
         "skip_mod_selection": False,
         "auto_install": False,
         "debug_mode": False,
+        "disable_rainbow_title": False,
         "modpack_downloaded": "",
         "modpack_installed": "",
     }
@@ -527,6 +530,7 @@ def fetch_modpack_data(url):
             response.raise_for_status()  # Raise exception for HTTP errors
             data = response.json()       # Parse JSON data
             cache_modpack_data(data)     # Cache the data for offline use
+            
             return data
         except requests.RequestException as e:
             print(f"Failed to fetch data: {e}")
@@ -1010,6 +1014,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             QMessageBox.critical(self, "Error", "Failed to load modpack data. Please check your internet connection.")
             self.modpack_data = {"modpack_categories": []}  # Use empty data as a fallback
 
+        # Extract hints from JSON data
+        self.useful_hints = self.modpack_data.get("hints", ["Tip: No hints found."])  # Default fallback
+
         self.branch_data = {}        # Dictionary to store branches for each modpack
 
         # Load favorite mods
@@ -1390,16 +1397,25 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         self.breathing_phase = 0
 
+        # Hint label
+        self.hint_label = QLabel("", self)
+        self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hint_label.setStyleSheet("font: 10pt 'Helvetica'; color: gray;")
+        layout.addWidget(self.hint_label, 1, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Start the hint cycling timer
+        self.start_hint_timer()
+
         # PLAY button
         self.play_button = QPushButton("PLAY", self)
 
-        layout.addWidget(self.play_button, 1, 0, 1, 6)
+        layout.addWidget(self.play_button, 2, 0, 1, 6)
         self.play_button.clicked.connect(self.play_game)
 
         # Installed modpack info
         self.installed_info_label = QLabel("", self)
         self.installed_info_label.setStyleSheet("font: 10pt 'Helvetica';")
-        layout.addWidget(self.installed_info_label, 2, 0, 1, 6)
+        layout.addWidget(self.installed_info_label, 3, 0, 1, 6)
 
         # Refresh button
         self.refresh_button = QPushButton("Refresh", self)
@@ -1408,22 +1424,22 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.refresh_button.clicked.connect(self.update_installed_info)
 
         # Add the refresh button to the layout and center it
-        layout.addWidget(self.refresh_button, 3, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.refresh_button, 4, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Modpack selection dropdown
         self.modpack_label = QLabel("Modpack:", self)
         self.modpack_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.modpack_label, 4, 0, 1, 1)
+        layout.addWidget(self.modpack_label, 5, 0, 1, 1)
 
         # Assuming self.settings["default_modpack"] exists and contains the default modpack name
         modpack_names = self.get_modpack_names()
 
         self.modpack_var = QComboBox(self)
         self.modpack_var.addItems(modpack_names)
-        layout.addWidget(self.modpack_var, 4, 1, 1, 3)
+        layout.addWidget(self.modpack_var, 5, 1, 1, 3)
 
         self.branch_var = QComboBox(self)
-        layout.addWidget(self.branch_var, 4, 4, 1, 2)
+        layout.addWidget(self.branch_var, 5, 4, 1, 2)
 
         # Connect modpack change to update branches
         self.modpack_var.currentIndexChanged.connect(self.update_branch_dropdown)
@@ -1431,14 +1447,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Descriptions
         self.description_label = QLabel("", self)
         self.description_label.setWordWrap(True)
-        layout.addWidget(self.description_label, 5, 0, 1, 6)
+        layout.addWidget(self.description_label, 6, 0, 1, 6)
 
         self.modpack_var.currentIndexChanged.connect(self.update_modpack_description)
 
         # Download button
         self.download_button = QPushButton("Download", self)
         self.download_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.download_button, 6, 0, 1, 3)
+        layout.addWidget(self.download_button, 7, 0, 1, 3)
         self.download_button.clicked.connect(lambda: self.download_modpack(main_window=self))
         self.download_button.setToolTip("Download (clone) selected modpack to the same directory as manager")
 
@@ -1464,63 +1480,63 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Quick Update button
         self.update_button = QPushButton("Quick Update", self)
         self.update_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.update_button, 6, 3, 1, 3)
+        layout.addWidget(self.update_button, 7, 3, 1, 3)
         self.update_button.clicked.connect(self.update_modpack)
         self.update_button.setToolTip("Quickly update downloaded modpacks (can be malfunctioned)")
 
         # Install button
         self.install_button = QPushButton("Install (Copy)", self)
         self.install_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.install_button, 7, 0, 1, 3)
+        layout.addWidget(self.install_button, 8, 0, 1, 3)
         self.install_button.clicked.connect(self.install_modpack)
         self.install_button.setToolTip("Copy (install) Mods content")
 
         # Uninstall button
         self.uninstall_button = QPushButton("Uninstall (Remove)", self)
         self.uninstall_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.uninstall_button, 7, 3, 1, 3)
+        layout.addWidget(self.uninstall_button, 8, 3, 1, 3)
         self.uninstall_button.clicked.connect(self.uninstall_modpack)
         self.uninstall_button.setToolTip("Delete Mods folder and its contents")
 
         # Verify Integrity button
         self.verify_button = QPushButton("Verify Integrity", self)
         self.verify_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.verify_button, 8, 0, 1, 3)  # Adjust grid position as needed
+        layout.addWidget(self.verify_button, 9, 0, 1, 3)  # Adjust grid position as needed
         self.verify_button.clicked.connect(self.verify_modpack_integrity)
         self.verify_button.setToolTip("Check modpack for missing or incomplete files")
 
         # Check Versions button
         self.check_versions_button = QPushButton("Check Versions", self)
         self.check_versions_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.check_versions_button, 8, 3, 1, 3)
+        layout.addWidget(self.check_versions_button, 9, 3, 1, 3)
         self.check_versions_button.clicked.connect(self.check_versions)
         self.check_versions_button.setToolTip("Check latest version for all modpacks")
 
         # Install Lovely button
         self.install_lovely_button = QPushButton("Install/Update lovely", self)
         self.install_lovely_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.install_lovely_button, 9, 0, 1, 3)
+        layout.addWidget(self.install_lovely_button, 10, 0, 1, 3)
         self.install_lovely_button.clicked.connect(self.install_lovely_injector)
         self.install_lovely_button.setToolTip("Install/update lovely injector")
 
         # Settings button
         self.open_settings_button = QPushButton("Settings", self)
         self.open_settings_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.open_settings_button, 9, 3, 1, 3)
+        layout.addWidget(self.open_settings_button, 10, 3, 1, 3)
         self.open_settings_button.clicked.connect(self.open_settings_popup)
         self.open_settings_button.setToolTip("Settings")
 
         # Discord button
         self.discord_button = QPushButton("Join Discord", self)
         self.discord_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.discord_button, 10, 0, 1, 3)
+        layout.addWidget(self.discord_button, 11, 0, 1, 3)
         self.discord_button.clicked.connect(self.open_discord)
         self.discord_button.setToolTip("Open Discord server in web browser")
 
         # Links button
         self.links_button = QPushButton("Links", self)
         self.links_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.links_button, 10, 3, 1, 3)
+        layout.addWidget(self.links_button, 11, 3, 1, 3)
         self.links_button.clicked.connect(self.open_links_menu)
         self.links_button.setToolTip("Open relavent links in web browser")
 
@@ -1539,12 +1555,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 color: #005ea0;  /* Change color on hover */
             }
         """)
-        layout.addWidget(self.tutorial_link, 11, 0, 1, 2)
+        layout.addWidget(self.tutorial_link, 12, 0, 1, 2)
 
         self.info = QLabel(self)
         self.info.setText("")
         self.update_build_info()
-        layout.addWidget(self.info, 11, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(self.info, 12, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignRight)
 
         # Apply the grid layout to the window
         self.setLayout(layout)
@@ -1576,11 +1592,16 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def update_color(self):
         """Smooth breathing effect with a full-spectrum rainbow color transition."""
+
+        if self.settings.get("disable_rainbow_title", False):
+            if self.settings.get("theme") == "Light":
+                self.title_label.setStyleSheet("font: 16pt 'Helvetica'; color: black;")  # Default color
+            elif self.settings.get("theme") == "Dark":
+                self.title_label.setStyleSheet("font: 16pt 'Helvetica'; color: white;")  # Default color
+            return
+
         # Adjust breathing phase for a smooth transition
         self.breathing_phase += 0.003  # Slower transition for a smoother effect
-
-        # Calculate intensity (sinusoidal breathing effect)
-        intensity = (math.sin(self.breathing_phase) + 1) / 2  # Normalize between 0 and 1
 
         # Compute RGB values using a full-spectrum rainbow pattern
         red = int(255 * (math.sin(self.breathing_phase) + 1) / 2)  
@@ -1634,6 +1655,17 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if branches:
             self.branch_var.clear()
             self.branch_var.addItems(branches)
+
+    def start_hint_timer(self):
+        """Start a timer to update the hint label with a random useful tip."""
+        self.update_hint()  # Show an initial hint
+        self.hint_timer = QTimer(self)
+        self.hint_timer.timeout.connect(self.update_hint)
+        self.hint_timer.start(30000)  # Change hint every 30 seconds
+
+    def update_hint(self):
+        """Update the hint label with a new random hint from information.json."""
+        self.hint_label.setText(random.choice(self.useful_hints))
 
     def open_links_menu(self):
         """Dynamically generate a dropdown menu with links from information.json."""
@@ -1908,6 +1940,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.theme_dropdown.currentIndexChanged.connect(self.apply_selected_theme)
         layout.addWidget(self.theme_dropdown)
 
+        # Add checkbox to disable rainbow effect
+        self.disable_rainbow_checkbox = QCheckBox("Disable Rainbow Title", self)
+        self.disable_rainbow_checkbox.setChecked(self.settings.get("disable_rainbow_title", False))
+        self.disable_rainbow_checkbox.stateChanged.connect(self.toggle_rainbow_effect)
+        layout.addWidget(self.disable_rainbow_checkbox)
+
         tab.setLayout(layout)
         return tab
 
@@ -1928,6 +1966,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Apply the selected theme."""
         self.setStyleSheet(theme)
         QApplication.instance().setStyleSheet(theme)
+
+    def toggle_rainbow_effect(self):
+        """Enable or disable the title's rainbow effect based on the setting."""
+        self.settings["disable_rainbow_title"] = self.disable_rainbow_checkbox.isChecked()
+        self.save_settings(disable_rainbow_title=self.disable_rainbow_checkbox.isChecked())
+        self.update_color()  # Apply the change immediately
 
     def update_descriptions(self):
         """Dynamically update descriptions based on checkbox states."""
@@ -1977,7 +2021,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def save_settings(self, game_directory=None, mods_directory=None, profile_name=None, 
                     default_modpack=None, backup_mods=None, remove_mods=None, auto_install=None, 
-                    skip_mod_selection=None, modpack_downloaded=None, modpack_installed=None, theme=None):
+                    skip_mod_selection=None, modpack_downloaded=None, modpack_installed=None, theme=None, disable_rainbow_title=None):
         """Save settings to the JSON file, handling optional arguments and UI values."""
 
         # Update settings dictionary with provided values
@@ -2003,6 +2047,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.settings["modpack_installed"] = modpack_installed
         if theme is not None:
             self.settings["theme"] = theme
+        if disable_rainbow_title is not None:
+            self.settings["disable_rainbow_title"] = disable_rainbow_title
 
         # Write settings to the JSON file
         try:
