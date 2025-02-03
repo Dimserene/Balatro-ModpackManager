@@ -110,6 +110,9 @@ LOGO_URL = "https://raw.githubusercontent.com/Dimserene/Dimserenes-Modpack/refs/
 LOGO_PATH = os.path.join(ASSETS_FOLDER, "logoNewYear.png")  # File name to save the downloaded logo
 
 CHECKBOX_URL = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/assets/assets.zip"
+INFORMATION_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
+CSV_URL = "https://docs.google.com/spreadsheets/d/1L2wPG5mNI-ZBSW_ta__L9EcfAw-arKrXXVD-43eU4og/export?format=csv&gid=510782711"
+
 
 MODPACKS_FOLDER = os.path.join(os.getcwd(), "Modpacks")  # Folder to store downloaded modpacks
 
@@ -469,8 +472,6 @@ def apply_debug_settings(self):
 # Worker class for downloading/updating modpack in the background
 ############################################################
 
-url = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
-
 def fetch_modpack_data(url):
     """Fetch modpack data, with fallback to offline cache if offline."""
     if is_online():
@@ -489,7 +490,7 @@ def fetch_modpack_data(url):
     # Fallback to cached data if offline
     return load_cached_modpack_data()
 
-modpack_data = fetch_modpack_data(url)
+modpack_data = fetch_modpack_data(INFORMATION_URL)
 
 # Extract `recommanded_lovely` if available
 recommanded_lovely = modpack_data.get("recommanded_lovely", "https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/")
@@ -523,10 +524,7 @@ def fetch_dependencies(url):
     cached_data = load_cached_modpack_data()
     return cached_data.get("dependencies", {}) if cached_data else {}
     
-dependencies = fetch_dependencies(url)
-
-# URL to the public Google Sheet (export as CSV format)
-sheet_url = "https://docs.google.com/spreadsheets/d/1L2wPG5mNI-ZBSW_ta__L9EcfAw-arKrXXVD-43eU4og/export?format=csv&gid=510782711"
+dependencies = fetch_dependencies(INFORMATION_URL)
 
 # Download and load CSV data
 import io
@@ -973,7 +971,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.load_favorites()  # Load favorites on startup
 
         # Load and process the CSV data
-        data = fetch_csv_data(sheet_url)  # Replace with your CSV-fetching logic
+        data = fetch_csv_data(CSV_URL)  # Replace with your CSV-fetching logic
         if data is not None:
             self.metadata = map_mods_to_metadata(data)  # Create metadata mapping
         else:
@@ -1466,19 +1464,27 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.open_settings_button.clicked.connect(self.open_settings_popup)
         self.open_settings_button.setToolTip("Settings")
 
-        # Mod List button
-        self.mod_list_button = QPushButton("Mod List", self)
-        self.mod_list_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.mod_list_button, 10, 0, 1, 3)
-        self.mod_list_button.clicked.connect(self.open_mod_list)
-        self.mod_list_button.setToolTip("Open mod list in web browser")
-
         # Discord button
         self.discord_button = QPushButton("Join Discord", self)
         self.discord_button.setStyleSheet("font: 12pt 'Helvetica';")
-        layout.addWidget(self.discord_button, 10, 3, 1, 3)
+        layout.addWidget(self.discord_button, 10, 0, 1, 3)
         self.discord_button.clicked.connect(self.open_discord)
         self.discord_button.setToolTip("Open Discord server in web browser")
+
+        # Links button
+        self.links_button = QPushButton("Links", self)
+        self.links_button.setStyleSheet("font: 12pt 'Helvetica';")
+        layout.addWidget(self.links_button, 10, 3, 1, 3)
+        self.links_button.clicked.connect(self.open_mod_list)
+        self.links_button.setToolTip("Open relavent links in web browser")
+
+        # Create a dropdown menu for the links
+        self.links_menu = QMenu(self)
+        self.links_button.setMenu(self.links_menu)
+
+        # Connect the button’s click event to populate the dropdown
+        # (The menu will show automatically on left click)
+        self.links_button.clicked.connect(self.populate_links_menu)
 
         # QLabel acting as a clickable link
         self.tutorial_link = QLabel(self)
@@ -1590,6 +1596,29 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if branches:
             self.branch_var.clear()
             self.branch_var.addItems(branches)
+
+    def populate_links_menu(self):
+        # URL for your information.json file on GitHub
+        
+        try:
+            response = requests.get(INFORMATION_URL)
+            response.raise_for_status()  # Raise an error for bad status codes
+            data = response.json()
+
+            # Clear any previous menu items
+            self.links_menu.clear()
+
+            for link_name, link_url in data.get("links", {}).items():
+                action = self.links_menu.addAction(link_name)
+                # Using lambda to capture the current link_url
+                action.triggered.connect(lambda checked, url=link_url: self.open_url(url))
+        except Exception as e:
+            # You can replace this with a dialog or logging as needed
+            print("Error fetching or parsing JSON:", e)
+
+    def open_url(self, url):
+        import webbrowser
+        webbrowser.open(url)
 
 ############################################################
 # Foundation of tutorial
