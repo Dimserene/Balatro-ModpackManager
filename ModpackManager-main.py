@@ -1401,7 +1401,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.hint_label = QLabel("", self)
         self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hint_label.setStyleSheet("font: 10pt 'Helvetica'; color: gray;")
+        self.hint_label.setCursor(Qt.CursorShape.PointingHandCursor)  # Set pointer cursor
+
+
         layout.addWidget(self.hint_label, 1, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Make the hint label clickable
+        self.hint_label.mousePressEvent = self.update_hint
 
         # Start the hint cycling timer
         self.start_hint_timer()
@@ -1663,7 +1669,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.hint_timer.timeout.connect(self.update_hint)
         self.hint_timer.start(30000)  # Change hint every 30 seconds
 
-    def update_hint(self):
+    def update_hint(self, event=None):
         """Update the hint label with a new random hint from information.json."""
         self.hint_label.setText(random.choice(self.useful_hints))
 
