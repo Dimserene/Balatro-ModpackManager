@@ -1,7 +1,7 @@
 {
-  "latest_version": "1.10.0",
+  "latest_version": "1.10.1",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Now allow drag and drop folder/archive/files onto manager to prepare for custom mods install (they get installed after main modpack mods)\n- Added Light/Dark mode in settings.\n- Now will automatically update manager and keep it up-to-date.\n- Fixed checkboxes invisible problem.\n- Fixed remove and backup Mods folder not overwriting default settings.\n- Fixed branch dropdown does not trigger auto guides.\n- Bug fixes.",
+  "changelog": "- Changed Mod List into Links, and add a dropdown for extra links.\n- Added Hints underneath title and randomly display useful hints.\n- Added a toggle to disable rainbow color effect.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
