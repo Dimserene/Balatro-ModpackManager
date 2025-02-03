@@ -1,10 +1,11 @@
 import tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
-from datetime import datetime
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QFrame, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout, QSpinBox
+from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+import git
 from git import Repo, GitCommandError
 from packaging.version import Version
+from urllib.parse import urlparse
 import pandas as pd
 from io import BytesIO
 
@@ -12,9 +13,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/02"
+DATE = "2025/02/03"
 ITERATION = "30"
-VERSION = Version("1.9.3")  # Current version of the Modpack Manager
+VERSION = Version("1.10.0")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
@@ -1016,6 +1017,33 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         self.create_widgets()
         
+        # Resize the window to the minimum size required for content
+        self.adjustSize()
+        self.setFixedSize(self.size())
+
+        # Enable drag-and-drop
+        self.setAcceptDrops(True)
+
+        # Create an overlay QLabel for the drag image
+        self.overlay_label = QLabel(self)
+        self.overlay_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.overlay_label.setStyleSheet("background-color: rgba(0, 0, 0, 100); border-radius: 10px;")
+
+        # Load the drag image
+        if self.settings.get("theme") == "Light":
+            self.drag_image_path = os.path.join(os.getcwd(), "ManagerSettings", "assets", "drag_overlay_black.png")
+        elif self.settings.get("theme") == "Dark":
+            self.drag_image_path = os.path.join(os.getcwd(), "ManagerSettings", "assets", "drag_overlay_white.png")
+        if os.path.exists(self.drag_image_path):
+            pixmap = QPixmap(self.drag_image_path)
+            self.overlay_label.setPixmap(pixmap)
+            self.overlay_label.setScaledContents(True)  # Scale image if needed
+            self.overlay_label.setText("Drag and drop to import custom mods...")
+        else:
+            self.overlay_label.setText("Dragging...")  # Fallback text if no image found
+
+        self.overlay_label.hide()  # Hide overlay initially
+
         self.initialize_branches()   # List all branches on startup
         self.update_branch_dropdown()
         self.update_installed_info()  # Initial update
@@ -1050,7 +1078,96 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Call the default closeEvent to continue closing the window
         super(ModpackManagerApp, self).closeEvent(event)
-        
+
+    def dragEnterEvent(self, event):
+        """Triggered when a drag enters the window."""
+        if event.mimeData().hasUrls():  # Only accept files or folders
+            event.acceptProposedAction()
+            self.show_drag_overlay()
+
+    def dragLeaveEvent(self, event):
+        """Triggered when a drag leaves the window."""
+        self.hide_drag_overlay()
+
+    def dropEvent(self, event):
+        """Triggered when a file or URL is dropped onto the window."""
+        self.hide_drag_overlay()
+        urls = event.mimeData().urls()
+        for url in urls:
+            file_path = url.toLocalFile()
+            if file_path:
+                self.handle_custom_files(file_path)
+            elif url.isValid():
+                self.handle_custom_files(url.toString())  # Handle URLs
+
+    def show_drag_overlay(self):
+        """Show the overlay image when dragging files into the window."""
+        self.overlay_label.setGeometry(0, 0, self.width(), self.height())
+        self.overlay_label.show()
+
+    def hide_drag_overlay(self):
+        """Hide the overlay image when dragging ends."""
+        self.overlay_label.hide()
+
+    def handle_custom_files(self, path):
+        """Process custom files, zips, and repositories into Modpacks/Custom/"""
+        modpacks_dir = os.path.join(os.getcwd(), "Modpacks")
+        custom_dir = os.path.join(modpacks_dir, "Custom")
+        os.makedirs(custom_dir, exist_ok=True)  # Ensure Custom directory exists
+
+        if path.startswith("http"):  # If URL
+            parsed_url = urlparse(path)
+            file_name = os.path.basename(parsed_url.path)
+            download_path = os.path.join(custom_dir, file_name)
+
+            try:
+                if path.endswith(".git"):  # Git repository
+                    repo_name = os.path.splitext(file_name)[0]  # Remove .git
+                    repo_path = os.path.join(custom_dir, repo_name)
+                    if os.path.exists(repo_path):
+                        QMessageBox.warning(self, "Git Repo Exists", f"Repo already exists: {repo_name}")
+                        return
+                    git.Repo.clone_from(path, repo_path)
+                    QMessageBox.information(self, "Git Cloned", f"Cloned repo: {repo_name}")
+                    return
+                else:  # Download file
+                    response = requests.get(path, stream=True)
+                    response.raise_for_status()
+                    with open(download_path, "wb") as f:
+                        for chunk in response.iter_content(1024):
+                            f.write(chunk)
+                    QMessageBox.information(self, "Download Complete", f"File downloaded: {file_name}")
+                    self.handle_custom_files(download_path)  # Process downloaded file
+                    return
+            except Exception as e:
+                QMessageBox.critical(self, "Download Failed", f"Error downloading: {str(e)}")
+                return
+
+        if os.path.isfile(path):  # If it's a file
+            file_name = os.path.basename(path)
+            dest_dir = os.path.join(custom_dir, os.path.splitext(file_name)[0])  # Folder for the file
+            os.makedirs(dest_dir, exist_ok=True)
+
+            if path.endswith(".zip"):  # Unzip files
+                try:
+                    with zipfile.ZipFile(path, 'r') as zip_ref:
+                        zip_ref.extractall(dest_dir)
+                    QMessageBox.information(self, "Unzipped", f"Extracted: {file_name}")
+                except zipfile.BadZipFile:
+                    QMessageBox.critical(self, "Zip Error", f"Failed to unzip: {file_name}")
+
+            elif path.endswith((".lua", ".toml")):  # Move config files
+                shutil.move(path, os.path.join(dest_dir, file_name))
+                QMessageBox.information(self, "File Moved", f"Moved file to: {dest_dir}")
+            else:
+                QMessageBox.warning(self, "Unknown File", "Only ZIP, LUA, and TOML files are supported.")
+
+        elif os.path.isdir(path):  # If it's a folder
+            folder_name = os.path.basename(path)
+            dest_dir = os.path.join(custom_dir, folder_name)
+            shutil.move(path, dest_dir)
+            QMessageBox.information(self, "Folder Moved", f"Moved folder to: {dest_dir}")
+
     def apply_modpack_styles(self, modpack_name):
         """Apply styles to UI elements based on the selected modpack"""
         if modpack_name == "Coonie's Modpack":
@@ -1243,27 +1360,22 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """)
         layout.addWidget(self.tutorial_link, 11, 0, 1, 2)
 
-        latest_version_str = self.modpack_data.get("latest_version", None)
-
-        # Validate and compare versions
-        if latest_version_str:
-            try:
-                latest_version = Version(latest_version_str)
-                if VERSION > latest_version:
-                    version_style = "color: red;"  # Local version is greater
-                else:
-                    version_style = "color: white;"  # Default style
-            except ValueError:
-                version_style = "color: orange;"  # Invalid version format
-        else:
-            version_style = "color: gray;"  # No version fetched
-
-        self.info = QLabel(f"Build: {DATE}, Iteration: {ITERATION}, Version: Release {VERSION}", self)
-        self.info.setStyleSheet(f"font: 8pt 'Helvetica'; {version_style}")
+        self.info = QLabel(self)
+        self.info.setText("")
+        self.update_build_info()
         layout.addWidget(self.info, 11, 0, 1, 6, alignment=Qt.AlignmentFlag.AlignRight)
 
         # Apply the grid layout to the window
         self.setLayout(layout)
+
+    def update_build_info(self):
+        """Updates the build info label dynamically."""
+        theme = self.settings.get("theme", "Light")  # Default to Light if theme not set
+        version_style = "color: white;" if theme == "Dark" else "color: black;"
+        
+        self.info.setText(f"Build: {DATE}, Iteration: {ITERATION}, Version: Release {VERSION}")
+        self.info.setStyleSheet(f"font: 8pt 'Helvetica'; {version_style}")
+        self.info.update()  # Force UI refresh
 
     # Function to handle modpack change
     def on_modpack_changed(self):
@@ -1613,6 +1725,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Save the selected theme to settings
         self.save_settings(theme=selected_theme)
+        self.update_build_info()  # Update the label dynamically
 
     def apply_theme(self, theme):
         """Apply the selected theme."""
