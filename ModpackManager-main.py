@@ -419,6 +419,8 @@ def set_git_buffer_size():
     try:
         # Increase the buffer size globally
         subprocess.run(['git', 'config', '--global', 'http.postBuffer', '524288000'], check=True)
+        subprocess.run(['git', 'config', '--global', 'http.maxRequestBuffer', '524288000'], check=True)
+        subprocess.run(['git', 'config', '--global', 'core.compression', '0'], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Failed to set Git buffer size: {e}")
 

@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import time
 import sys
+import psutil
 
 # Detect system platform
 system_platform = platform.system()
@@ -19,6 +20,7 @@ if system_platform == "Linux":
 # Define paths based on OS
 if system_platform == "Windows":
     MANAGER_FOLDER = os.path.abspath(os.path.expandvars(r"%AppData%\\Balatro"))
+    SETTINGS_FOLDER = os.path.join(MANAGER_FOLDER, "ManagerSettings")  # Ensure settings are stored correctly
     MANAGER_EXECUTABLE = "ModpackManager.exe"
     DOWNLOAD_NAME = "ModpackManager_New.exe"
 
@@ -29,18 +31,33 @@ elif system_platform in ["Linux", "Darwin"]:  # Linux/macOS
 
     if is_steam_deck:
         MANAGER_FOLDER = os.path.expanduser("~/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro")
-    
+        SETTINGS_FOLDER = os.path.join(MANAGER_FOLDER, "ManagerSettings")  # Ensure settings are stored correctly
+        
     elif system_platform == "Linux":
         MANAGER_FOLDER = os.path.abspath(os.path.expandvars("/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro"))
-    
+        SETTINGS_FOLDER = os.path.join(MANAGER_FOLDER, "ManagerSettings")  # Ensure settings are stored correctly
+
     elif system_platform == "Darwin":
         MANAGER_FOLDER = os.path.abspath(os.path.expanduser("~/Library/Application Support/Balatro"))
+        SETTINGS_FOLDER = os.path.join(MANAGER_FOLDER, "ManagerSettings")  # Ensure settings are stored correctly
 
 # Ensure the manager folder exists
 os.makedirs(MANAGER_FOLDER, exist_ok=True)
+os.makedirs(SETTINGS_FOLDER, exist_ok=True)  # Create settings folder if missing
 
 # Configuration
 INFORMATION_JSON_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
+
+def is_manager_running():
+    """Check if the Modpack Manager is already running to prevent duplicate launches."""
+    for process in psutil.process_iter(attrs=["name", "cmdline"]):
+        try:
+            cmdline = process.info["cmdline"]
+            if cmdline and any("ModpackManager" in arg for arg in cmdline):
+                return True  # Manager is already running
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    return False
 
 def fetch_latest_version():
     """Fetch the latest version and direct download URL based on OS."""
@@ -70,12 +87,7 @@ def fetch_latest_version():
 
 def get_current_version():
     """Retrieve the currently installed version from a dedicated version file or executable metadata."""
-    settings_folder = os.path.join(MANAGER_FOLDER, "ManagerSettings")
-    version_file = os.path.join(settings_folder, "version.txt")
-
-    # Ensure ManagerSettings folder exists
-    if not os.path.exists(settings_folder):
-        os.makedirs(settings_folder, exist_ok=True)
+    version_file = os.path.join(SETTINGS_FOLDER, "version.txt")
 
     # Check if a version file exists
     if os.path.exists(version_file):
@@ -142,10 +154,9 @@ def replace_old_manager(new_exe_path, latest_version):
         if system_platform in ["Linux", "Darwin"]:  # Make executable on Linux/macOS
             os.chmod(old_manager_path, 0o755)
 
-        # Update version file
-        settings_folder = os.path.join(MANAGER_FOLDER, "ManagerSettings")
-        version_file = os.path.join(settings_folder, "version.txt")
-        os.makedirs(settings_folder, exist_ok=True)  # Ensure settings folder exists
+        # Update version file inside SETTINGS_FOLDER
+        version_file = os.path.join(SETTINGS_FOLDER, "version.txt")
+        os.makedirs(SETTINGS_FOLDER, exist_ok=True)
 
         with open(version_file, "w", encoding="utf-8") as file:
             file.write(latest_version)
@@ -193,6 +204,11 @@ def launch_manager():
             else:
                 print("Failed to download Modpack Manager. Exiting.")
                 return
+
+        # Prevent launching if already running
+        if is_manager_running():
+            print("Modpack Manager is already running. Skipping launch.")
+            return
 
         if system_platform == "Windows":
             subprocess.Popen(
