@@ -63,5 +63,12 @@
         }
       ]
     }
-  ]
+  ],
+  "links": {
+    "repository": "https://github.com/Dimserene/Balatro-ModpackManager",
+    "bugtracker": "https://github.com/Dimserene/Balatro-ModpackManager/issues",
+    "changelog": "https://github.com/Dimserene/Balatro-ModpackManager/blob/main/CHANGELOG.md",
+    "documentation": "https://yourmodsite.example.com/wiki",
+    "mod_list": "https://docs.google.com/spreadsheets/d/1L2wPG5mNI-ZBSW_ta__L9EcfAw-arKrXXVD-43eU4og"
+  }
 }

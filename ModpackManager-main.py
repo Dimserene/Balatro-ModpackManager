@@ -959,7 +959,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.metadata = {}
 
         # Fetch modpack data with offline support
-        self.modpack_data = fetch_modpack_data("https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json")
+        self.modpack_data = fetch_modpack_data(INFORMATION_URL)
         if not self.modpack_data:
             QMessageBox.critical(self, "Error", "Failed to load modpack data. Please check your internet connection.")
             self.modpack_data = {"modpack_categories": []}  # Use empty data as a fallback
@@ -1475,16 +1475,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.links_button = QPushButton("Links", self)
         self.links_button.setStyleSheet("font: 12pt 'Helvetica';")
         layout.addWidget(self.links_button, 10, 3, 1, 3)
-        self.links_button.clicked.connect(self.open_mod_list)
+        self.links_button.clicked.connect(self.open_links_menu)
         self.links_button.setToolTip("Open relavent links in web browser")
-
-        # Create a dropdown menu for the links
-        self.links_menu = QMenu(self)
-        self.links_button.setMenu(self.links_menu)
-
-        # Connect the button’s click event to populate the dropdown
-        # (The menu will show automatically on left click)
-        self.links_button.clicked.connect(self.populate_links_menu)
 
         # QLabel acting as a clickable link
         self.tutorial_link = QLabel(self)
@@ -1597,29 +1589,39 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.branch_var.clear()
             self.branch_var.addItems(branches)
 
-    def populate_links_menu(self):
-        # URL for your information.json file on GitHub
+    def open_links_menu(self):
+        """Dynamically generate a dropdown menu with links from information.json."""
+        links_menu = QMenu(self)
+
+        # Extract predefined general links (repository, bugtracker, etc.)
+        general_links = self.modpack_data.get("links", {})
+        if general_links:
+            for link_name, url in general_links.items():
+                # Convert key names into readable labels
+                label = link_name.replace("_", " ").title()  # e.g., "bugtracker" -> "Bugtracker"
+                action = links_menu.addAction(label)
+                action.triggered.connect(lambda checked, url=url: webbrowser.open(url))
+
+        # Set menu as a top-level popup
+        links_menu.setWindowFlags(Qt.WindowType.Popup)
+
+        # Calculate the global position of the button
+        button_rect = self.links_button.geometry()
+        global_pos = self.links_button.mapToGlobal(button_rect.bottomLeft())
+
+        # Adjust position to ensure it's fully visible
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        menu_size = links_menu.sizeHint()
+
+        if global_pos.y() + menu_size.height() > screen_geometry.height():
+            global_pos.setY(global_pos.y() - menu_size.height() - button_rect.height())  # Move menu above button if needed
+
+        if global_pos.x() + menu_size.width() > screen_geometry.width():
+            global_pos.setX(screen_geometry.width() - menu_size.width())  # Adjust for right edge
+
+        # Show the menu at the adjusted global position
+        links_menu.exec(global_pos)
         
-        try:
-            response = requests.get(INFORMATION_URL)
-            response.raise_for_status()  # Raise an error for bad status codes
-            data = response.json()
-
-            # Clear any previous menu items
-            self.links_menu.clear()
-
-            for link_name, link_url in data.get("links", {}).items():
-                action = self.links_menu.addAction(link_name)
-                # Using lambda to capture the current link_url
-                action.triggered.connect(lambda checked, url=link_url: self.open_url(url))
-        except Exception as e:
-            # You can replace this with a dialog or logging as needed
-            print("Error fetching or parsing JSON:", e)
-
-    def open_url(self, url):
-        import webbrowser
-        webbrowser.open(url)
-
 ############################################################
 # Foundation of tutorial
 ############################################################
