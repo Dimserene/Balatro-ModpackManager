@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import time
 import sys
-import psutil
 
 # Detect system platform
 system_platform = platform.system()
@@ -47,17 +46,6 @@ os.makedirs(SETTINGS_FOLDER, exist_ok=True)  # Create settings folder if missing
 
 # Configuration
 INFORMATION_JSON_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
-
-def is_manager_running():
-    """Check if the Modpack Manager is already running to prevent duplicate launches."""
-    for process in psutil.process_iter(attrs=["name", "cmdline"]):
-        try:
-            cmdline = process.info["cmdline"]
-            if cmdline and any("ModpackManager" in arg for arg in cmdline):
-                return True  # Manager is already running
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-    return False
 
 def fetch_latest_version():
     """Fetch the latest version and direct download URL based on OS."""
@@ -204,11 +192,6 @@ def launch_manager():
             else:
                 print("Failed to download Modpack Manager. Exiting.")
                 return
-
-        # Prevent launching if already running
-        if is_manager_running():
-            print("Modpack Manager is already running. Skipping launch.")
-            return
 
         if system_platform == "Windows":
             subprocess.Popen(
