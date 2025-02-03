@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.10.1] - 2025-02-05
+### Added
+- **Mod List Links**: Changed mod list into clickable links.
+- **Extra Links Dropdown**: Added a dropdown for extra relevant links.
+- **Hints Feature**: Introduced a hint system that randomly displays useful hints underneath the title.
+- **Rainbow Effect Toggle**: Added a setting to disable the rainbow color effect.
+
+---
+
 ## [1.10.0] - 2025-02-03
 ### Added
 - **Drag and Drop Mod Installation**: Users can now drag and drop folders, archives, or files onto the manager to prepare for custom mod installations. These will be installed after the main modpack mods.
