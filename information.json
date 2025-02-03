@@ -80,10 +80,10 @@
     "💡Tip: Drag and drop custom mods into the Mod Manager!",
     "💡Tip: Hover over mods to see their descriptions.",
     "💡Tip: Join the Discord for help and updates!",
-    "💡Tip: 'Check Versions' to see ifmodpack is outdated!",
+    "💡Tip: 'Check Versions' to see if modpack is outdated!",
     "💡Tip: Modpacks auto-update every day at 00:00 UTC.",
     "💡Tip: Disable title's rainbow effect in Settings!",
-    "💡Tip: Uninstalling a modpack wipes the Mods folder.",
+    "💡Tip: Uninstalling a modpack wipes the Mods folder!",
     "💡Tip: Set a custom game executable in Settings.",
     "💡Tip: Click 'Refresh' if modpack info looks outdated.",
     "💡Tip: 'Steamodded' will be auto-installed!",
@@ -95,6 +95,9 @@
     "💡Tip: Mods with dependencies auto-select required mods.",
     "💡Tip: Manager auto-updates every time you launch!",
     "💡Tip: Game issues? Try updating Lovely Injector.",
-    "💡Tip: Use search bar in mod selection to search mods!"
+    "💡Tip: Use search bar in mod selection to search mods!",
+    "💡Tip: Click me to display more useful hints!",
+    "💡Tip: Modpacks are stored alonside Mods folder!",
+    "💡Tip: Settings are stored alonside Mods folder!"
   ]
 }
