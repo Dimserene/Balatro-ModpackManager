@@ -1027,21 +1027,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Create an overlay QLabel for the drag image
         self.overlay_label = QLabel(self)
         self.overlay_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.overlay_label.setStyleSheet("background-color: rgba(0, 0, 0, 100); border-radius: 10px;")
-
-        # Load the drag image
-        if self.settings.get("theme") == "Light":
-            self.drag_image_path = os.path.join(os.getcwd(), "ManagerSettings", "assets", "drag_overlay_black.png")
-        elif self.settings.get("theme") == "Dark":
-            self.drag_image_path = os.path.join(os.getcwd(), "ManagerSettings", "assets", "drag_overlay_white.png")
-        if os.path.exists(self.drag_image_path):
-            pixmap = QPixmap(self.drag_image_path)
-            self.overlay_label.setPixmap(pixmap)
-            self.overlay_label.setScaledContents(True)  # Scale image if needed
-            self.overlay_label.setText("Drag and drop to import custom mods...")
-        else:
-            self.overlay_label.setText("Dragging...")  # Fallback text if no image found
-
+        self.overlay_label.setStyleSheet("font-weight: bold; background-color: rgba(0, 0, 0, 200); font-size: 20pt; color: white")
+        self.overlay_label.setWordWrap(True)  # Prevent text clipping
+        self.overlay_label.setText("Drag and drop to import custom mods...")
         self.overlay_label.hide()  # Hide overlay initially
 
         self.initialize_branches()   # List all branches on startup
@@ -1116,57 +1104,206 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         os.makedirs(custom_dir, exist_ok=True)  # Ensure Custom directory exists
 
         if path.startswith("http"):  # If URL
-            parsed_url = urlparse(path)
-            file_name = os.path.basename(parsed_url.path)
-            download_path = os.path.join(custom_dir, file_name)
-
-            try:
-                if path.endswith(".git"):  # Git repository
-                    repo_name = os.path.splitext(file_name)[0]  # Remove .git
-                    repo_path = os.path.join(custom_dir, repo_name)
-                    if os.path.exists(repo_path):
-                        QMessageBox.warning(self, "Git Repo Exists", f"Repo already exists: {repo_name}")
-                        return
-                    git.Repo.clone_from(path, repo_path)
-                    QMessageBox.information(self, "Git Cloned", f"Cloned repo: {repo_name}")
-                    return
-                else:  # Download file
-                    response = requests.get(path, stream=True)
-                    response.raise_for_status()
-                    with open(download_path, "wb") as f:
-                        for chunk in response.iter_content(1024):
-                            f.write(chunk)
-                    QMessageBox.information(self, "Download Complete", f"File downloaded: {file_name}")
-                    self.handle_custom_files(download_path)  # Process downloaded file
-                    return
-            except Exception as e:
-                QMessageBox.critical(self, "Download Failed", f"Error downloading: {str(e)}")
-                return
+            self.handle_url(path)
+            return
 
         if os.path.isfile(path):  # If it's a file
             file_name = os.path.basename(path)
-            dest_dir = os.path.join(custom_dir, os.path.splitext(file_name)[0])  # Folder for the file
+            clean_name = self.clean_mod_name(os.path.splitext(file_name)[0])  # Clean mod name
+            dest_dir = os.path.join(custom_dir, clean_name)  # Folder for the file
             os.makedirs(dest_dir, exist_ok=True)
 
-            if path.endswith(".zip"):  # Unzip files
-                try:
-                    with zipfile.ZipFile(path, 'r') as zip_ref:
-                        zip_ref.extractall(dest_dir)
-                    QMessageBox.information(self, "Unzipped", f"Extracted: {file_name}")
-                except zipfile.BadZipFile:
-                    QMessageBox.critical(self, "Zip Error", f"Failed to unzip: {file_name}")
+            if self.is_supported_archive(path):  # Copy & extract archives
+                self.extract_archive(path, dest_dir)
+                self.flatten_nested_folders(dest_dir)  # Flatten nested folders after extraction
 
-            elif path.endswith((".lua", ".toml")):  # Move config files
-                shutil.move(path, os.path.join(dest_dir, file_name))
-                QMessageBox.information(self, "File Moved", f"Moved file to: {dest_dir}")
+            elif path.endswith((".lua", ".toml")):  # Copy config files
+                shutil.copy2(path, os.path.join(dest_dir, file_name))
+                QMessageBox.information(self, "File Copied", f"Copied {file_name} to: {dest_dir}")
+
             else:
-                QMessageBox.warning(self, "Unknown File", "Only ZIP, LUA, and TOML files are supported.")
+                QMessageBox.warning(self, "Unknown File", "Only ZIP, TAR, RAR, 7Z, LUA, and TOML files are supported.")
 
         elif os.path.isdir(path):  # If it's a folder
             folder_name = os.path.basename(path)
-            dest_dir = os.path.join(custom_dir, folder_name)
-            shutil.move(path, dest_dir)
-            QMessageBox.information(self, "Folder Moved", f"Moved folder to: {dest_dir}")
+            clean_folder_name = self.clean_mod_name(folder_name)  # Clean mod name
+            dest_dir = os.path.join(custom_dir, clean_folder_name)
+
+            shutil.copytree(path, dest_dir, dirs_exist_ok=True)  # Copy instead of move
+            self.flatten_nested_folders(dest_dir)  # Flatten nested folders
+            QMessageBox.information(self, "Folder Copied", f"Copied folder to: {dest_dir}")
+
+    def flatten_nested_folders(self, folder_path):
+        """
+        If the extracted/copied folder contains only one folder, move contents up one level.
+        Ensures the folder name does not conflict by renaming existing folders.
+        """
+        while True:
+            items = os.listdir(folder_path)
+
+            if len(items) == 1 and os.path.isdir(os.path.join(folder_path, items[0])):  # Only one folder inside
+                inner_folder = os.path.join(folder_path, items[0])
+
+                for item in os.listdir(inner_folder):
+                    source = os.path.join(inner_folder, item)
+                    destination = os.path.join(folder_path, item)
+
+                    # 🔴 FIX: If destination already exists, rename it
+                    if os.path.exists(destination):
+                        counter = 1
+                        new_destination = f"{destination}_{counter}"
+                        while os.path.exists(new_destination):
+                            counter += 1
+                            new_destination = f"{destination}_{counter}"
+                        destination = new_destination
+
+                    shutil.move(source, destination)  # Move files/folders up
+
+                os.rmdir(inner_folder)  # Remove the now-empty nested folder
+            else:
+                break  # Stop if there's more than one item or no folders
+
+    def clean_mod_name(self, mod_name):
+        """
+        Removes '-main', '-master', and any other branch suffix from the mod folder name.
+        Ensures mod folder names are unique by checking existing folders.
+        """
+        cleaned_name = re.sub(r'-(main|master|dev|beta|alpha|release|hotfix|patch\d+)$', '', mod_name, flags=re.IGNORECASE)
+
+        custom_mods_dir = os.path.join(os.getcwd(), "Modpacks", "Custom")
+        destination_path = os.path.join(custom_mods_dir, cleaned_name)
+
+        # 🔴 FIX: Ensure unique name if a folder already exists
+        if os.path.exists(destination_path):
+            counter = 1
+            new_name = f"{cleaned_name}_{counter}"
+            while os.path.exists(os.path.join(custom_mods_dir, new_name)):
+                counter += 1
+                new_name = f"{cleaned_name}_{counter}"
+            cleaned_name = new_name
+
+        return cleaned_name
+
+    def is_supported_archive(self, file_path):
+        """Checks if the file is a supported archive format."""
+        return file_path.endswith((".zip", ".tar.gz", ".tar.xz", ".tar.bz2", ".rar", ".7z"))
+
+    def extract_archive(self, archive_path, extract_to):
+        """Extracts various archive types, using system tools for .rar and .7z."""
+        try:
+            temp_extract_dir = extract_to + "_temp"
+
+            # Remove existing folder before extraction
+            if os.path.exists(temp_extract_dir):
+                shutil.rmtree(temp_extract_dir)
+
+            os.makedirs(temp_extract_dir, exist_ok=True)
+            
+            if archive_path.endswith(".zip"):  # ZIP Extraction
+                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_extract_dir)
+
+            elif archive_path.endswith((".tar.gz", ".tar.xz", ".tar.bz2")):  # TAR Extraction
+                with tarfile.open(archive_path, 'r:*') as tar_ref:
+                    tar_ref.extractall(temp_extract_dir)
+
+            elif archive_path.endswith(".rar"):  # RAR Extraction
+                self.extract_rar(archive_path, temp_extract_dir)
+
+            elif archive_path.endswith(".7z"):  # 7Z Extraction
+                self.extract_7z(archive_path, temp_extract_dir)
+
+            # Find extracted folder(s) inside temp directory
+            extracted_items = os.listdir(temp_extract_dir)
+            
+            if len(extracted_items) == 1 and os.path.isdir(os.path.join(temp_extract_dir, extracted_items[0])):
+                extracted_folder = os.path.join(temp_extract_dir, extracted_items[0])
+            else:
+                extracted_folder = temp_extract_dir
+
+            cleaned_name = self.clean_mod_name(os.path.basename(archive_path).replace(".zip", ""))
+            destination_path = os.path.join(extract_to, cleaned_name)
+
+            # If the destination path already exists, rename it
+            if os.path.exists(destination_path):
+                counter = 1
+                new_destination = f"{destination_path}_{counter}"
+                while os.path.exists(new_destination):
+                    counter += 1
+                    new_destination = f"{destination_path}_{counter}"
+                destination_path = new_destination
+
+            shutil.move(extracted_folder, destination_path)
+
+            shutil.rmtree(temp_extract_dir, ignore_errors=True)  # Cleanup temp extraction folder
+            self.flatten_nested_folders(destination_path)  # Flatten after extraction
+            QMessageBox.information(self, "Extracted", f"Successfully extracted: {os.path.basename(archive_path)}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Extraction Error", f"Failed to extract: {os.path.basename(archive_path)}\nError: {str(e)}")
+            
+    def extract_rar(self, archive_path, extract_to):
+        """Extracts .rar files using system tools."""
+        try:
+            if os.name == "nt":  # Windows
+                winrar_path = "C:\\Program Files\\WinRAR\\WinRAR.exe"
+                if os.path.exists(winrar_path):
+                    subprocess.run([winrar_path, "x", "-y", archive_path, extract_to], check=True)
+                else:
+                    raise FileNotFoundError("WinRAR not found. Install WinRAR or use another extractor.")
+
+            else:  # Linux/MacOS
+                subprocess.run(["unrar", "x", "-o+", archive_path, extract_to], check=True)
+
+        except Exception as e:
+            QMessageBox.critical(self, "RAR Extraction Error", f"Failed to extract .rar file: {str(e)}")
+
+    def extract_7z(self, archive_path, extract_to):
+        """Extracts .7z files using system tools."""
+        try:
+            if os.name == "nt":  # Windows
+                seven_zip_path = "C:\\Program Files\\7-Zip\\7z.exe"
+                if os.path.exists(seven_zip_path):
+                    subprocess.run([seven_zip_path, "x", "-y", archive_path, f"-o{extract_to}"], check=True)
+                else:
+                    raise FileNotFoundError("7-Zip not found. Install 7-Zip or use another extractor.")
+
+            else:  # Linux/MacOS
+                subprocess.run(["7z", "x", "-y", archive_path, f"-o{extract_to}"], check=True)
+
+        except Exception as e:
+            QMessageBox.critical(self, "7Z Extraction Error", f"Failed to extract .7z file: {str(e)}")
+
+    def handle_url(self, url):
+        """Handle URLs for downloading files or cloning repos."""
+        parsed_url = urlparse(url)
+        file_name = os.path.basename(parsed_url.path)
+        download_path = os.path.join(os.getcwd(), "Modpacks", "Custom", file_name)
+
+        try:
+            if url.endswith(".git"):  # Git repository
+                repo_name = os.path.splitext(file_name)[0]
+                repo_path = os.path.join(os.getcwd(), "Modpacks", "Custom", repo_name)
+                if os.path.exists(repo_path):
+                    QMessageBox.warning(self, "Git Repo Exists", f"Repo already exists: {repo_name}")
+                    return
+                git.Repo.clone_from(url, repo_path)
+                QMessageBox.information(self, "Git Cloned", f"Cloned repo: {repo_name}")
+                return
+
+            # Download file
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            with open(download_path, "wb") as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+
+            QMessageBox.information(self, "Download Complete", f"File downloaded: {file_name}")
+            self.handle_custom_files(download_path)  # Process downloaded file
+
+        except Exception as e:
+            QMessageBox.critical(self, "Download Failed", f"Error downloading: {str(e)}")
+
 
     def apply_modpack_styles(self, modpack_name):
         """Apply styles to UI elements based on the selected modpack"""
@@ -2724,7 +2861,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         elif system_platform in ["Windows", "Linux"]:
             install_path = os.path.abspath(os.path.expandvars(self.mods_dir))
 
-        mod_list = self.get_mod_list(mods_src)
+        mod_list = self.get_mod_list(mods_src) if os.path.isdir(mods_src) else []
 
         # Handle special cases based on URL type
         if modpack_info["url"].endswith(".git"):
@@ -2733,32 +2870,37 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             repo_name = modpack_name.replace(" ", "_")
 
         try:
-            # Check if the repository directory exists
-            if not os.path.isdir(repo_path):
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Modpack {repo_path} does not exist. Please download first.",
-                )
-                return
+            # If a modpack is selected but doesn't exist, show an error
+            if modpack_info:
+                if not os.path.isdir(repo_path):
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Modpack {repo_path} does not exist. Please download first.",
+                    )
+                    return
 
-            # Check if the Mods folder exists in the repository
-            if not os.path.isdir(mods_src):
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Mods folder not found in the repository: {mods_src}. Please force download and try again.",
-                )
-                return
+                # Check if the Mods folder exists in the repository
+                if not os.path.isdir(mods_src):
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Mods folder not found in the repository: {mods_src}. Please force download and try again.",
+                    )
+                    return
 
             # Check if the install path exists and create it if necessary
             if not os.path.exists(install_path):
                 os.makedirs(install_path)
 
+            # If skipping mod selection, install all mods immediately
             if skip_mod_selection:
                 # Install all mods without showing the mod selection popup
                 self.excluded_mods = []  # No mods are excluded
                 self.install_mods(None)  # Pass None as we don't have a popup
+
+                # 🔴 FIX: Delay opening of custom mod selection popup to ensure UI updates
+                QTimer.singleShot(100, self.popup_custom_mod_selection)
             else:
                 # Show mod selection popup
                 self.popup_mod_selection(mod_list, dependencies)
@@ -3073,6 +3215,89 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         popup.finished.connect(on_close)
         popup.exec()
+
+    def popup_custom_mod_selection(self):
+        """
+        Displays the custom mod selection screen after the main modpack selection.
+        """
+        popup = QDialog(self)
+        popup.setWindowTitle("Custom Mod Selection")
+
+        layout = QVBoxLayout(popup)
+
+        # Title
+        title_label = QLabel("Select Custom Mods to Install")
+        layout.addWidget(title_label)
+
+        # Always initialize custom_mod_checkboxes before use
+        self.custom_mod_checkboxes = {}
+
+        # Check if the Custom Mods folder exists
+        custom_mods_dir = os.path.join(os.getcwd(), "Modpacks", "Custom")
+        if not os.path.exists(custom_mods_dir) or not os.listdir(custom_mods_dir):
+            QMessageBox.warning(self, "No Custom Mods Found", "No custom mods are available for installation.")
+            popup.close()
+            return
+
+        # Get the list of available custom mods
+        mod_list = [mod for mod in os.listdir(custom_mods_dir) if os.path.isdir(os.path.join(custom_mods_dir, mod))]
+
+        # Scroll Area for Mod List
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        mod_container = QWidget()
+        mod_layout = QVBoxLayout(mod_container)
+
+        # Create checkboxes for each mod
+        for mod in mod_list:
+            mod_checkbox = QCheckBox(mod)
+            mod_checkbox.setChecked(True)  # Default to checked
+            mod_layout.addWidget(mod_checkbox)
+            self.custom_mod_checkboxes[mod] = mod_checkbox  # Store checkboxes for custom mods
+
+        mod_container.setLayout(mod_layout)
+        scroll_area.setWidget(mod_container)
+        layout.addWidget(scroll_area)
+
+        # Buttons
+        next_button = QPushButton("Next")
+        next_button.clicked.connect(lambda: self.install_custom_modpack(popup))
+
+        layout.addWidget(next_button)
+        popup.setLayout(layout)
+
+        popup.exec()
+
+    def install_custom_modpack(self, popup):
+        """
+        Installs the selected custom modpack after the Next button is clicked.
+        """
+        popup.close()  # Close the selection window
+            
+        # 🔴 FIX: Ensure custom_mod_checkboxes is initialized before accessing it
+        if not hasattr(self, "custom_mod_checkboxes") or not self.custom_mod_checkboxes:
+            QMessageBox.warning(self, "No Mods Selected", "No custom mods were selected for installation.")
+            return
+
+        # Determine the Mods folder path
+        mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
+        os.makedirs(mods_dir, exist_ok=True)  # Ensure Mods directory exists
+
+        # Copy selected mods into the Mods directory
+        selected_mods = [mod for mod, checkbox in self.custom_mod_checkboxes.items() if checkbox.isChecked()]
+
+        if not selected_mods:
+            QMessageBox.warning(self, "No Mods Selected", "No custom mods will be installed.")
+            return
+
+        for mod in selected_mods:
+            source_path = os.path.join(os.getcwd(), "Modpacks", "Custom", mod)
+            dest_path = os.path.join(mods_dir, mod)
+
+            if os.path.exists(source_path):
+                shutil.copytree(source_path, dest_path, dirs_exist_ok=True)
+
+        QMessageBox.information(self, "Install Complete", "Custom mods have been installed.")
 
     def handle_dependencies(self, mod, var, mod_vars, dependencies):
         """
@@ -3395,6 +3620,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if popup:
                 self.install_popup_open = False
                 popup.close()
+                self.popup_custom_mod_selection()
 
     def save_and_install(self, mod_vars, popup):
         self.save_preferences(mod_vars)

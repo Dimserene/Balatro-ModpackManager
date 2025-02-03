@@ -166,7 +166,7 @@ def setup_virtual_env():
     
     try:
         subprocess.run([pip_path, "install", "--upgrade", "pip"], check=True)
-        subprocess.run([pip_path, "install", "PyQt6", "GitPython", "requests", "pandas", "packaging"], check=True)
+        subprocess.run([pip_path, "install", "PyQt6", "GitPython", "requests", "pandas", "packaging", "patool"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Failed to install dependencies: {e}")
         return False
