@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [1.10.1] - 2025-02-05
+## [1.10.2] - 2025-02-04
+### Fixed
+- **Fatal import error**: Fixed fatal import git error causing manager malfunction.
+
+---
+
+## [1.10.1] - 2025-02-03
 ### Added
 - **Mod List Links**: Changed mod list into clickable links.
 - **Extra Links Dropdown**: Added a dropdown for extra relevant links.

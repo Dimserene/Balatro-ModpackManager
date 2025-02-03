@@ -1,7 +1,7 @@
 {
-  "latest_version": "1.10.1",
+  "latest_version": "1.10.2",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Changed Mod List into Links, and add a dropdown for extra links.\n- Added Hints underneath title and randomly display useful hints.\n- Added a toggle to disable rainbow color effect.",
+  "changelog": "- Fixed fatal import git error causing manager malfunction.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
