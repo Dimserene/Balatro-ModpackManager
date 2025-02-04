@@ -39,6 +39,7 @@ if system_platform == "Windows":
         "skip_mod_selection": False,
         "auto_install": False,
         "debug_mode": False,
+        "git_http_version": "HTTP/2",  # Default to HTTP/2
         "disable_rainbow_title": False,
         "theme": "Light",
         "modpack_downloaded": "",
@@ -66,6 +67,7 @@ elif system_platform == "Linux":
             "skip_mod_selection": False,
             "auto_install": False,
             "debug_mode": False,
+            "git_http_version": "HTTP/2",  # Default to HTTP/2
             "disable_rainbow_title": False,
             "theme": "Light",
             "modpack_downloaded": "",
@@ -85,6 +87,7 @@ elif system_platform == "Linux":
             "skip_mod_selection": False,
             "auto_install": False,
             "debug_mode": False,
+            "git_http_version": "HTTP/2",  # Default to HTTP/2
             "disable_rainbow_title": False,
             "theme": "Light",
             "modpack_downloaded": "",
@@ -104,6 +107,7 @@ elif system_platform == "Darwin":
         "skip_mod_selection": False,
         "auto_install": False,
         "debug_mode": False,
+        "git_http_version": "HTTP/2",  # Default to HTTP/2
         "disable_rainbow_title": False,
         "theme": "Light",
         "modpack_downloaded": "",
@@ -1788,23 +1792,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Create a new popup window
         popup = QDialog(self)
         popup.setWindowTitle("Settings")
-        popup.setFixedSize(550, 450)
+        popup.setFixedSize(450, 450)
 
         # Create tab widget
         tab_widget = QTabWidget(popup)
 
-        # Always recreate tabs when opening settings
-        self.general_tab = self.create_general_tab()
-        self.installation_tab = self.create_installation_tab()
-
-        # Add tabs
-        general_tab = self.create_general_tab()
-        installation_tab = self.create_installation_tab()
-        theme_tab = self.create_theme_tab()
-
-        tab_widget.addTab(general_tab, "⚙ General")
-        tab_widget.addTab(installation_tab, "🔧 Installation")
-        tab_widget.addTab(theme_tab, "✨ Theme")
+        tab_widget.addTab(self.create_general_tab(), "⚙ General")
+        tab_widget.addTab(self.create_installation_tab(), "🔧 Installation")
+        tab_widget.addTab(self.create_theme_tab(), "✨ Theme")
+        tab_widget.addTab(self.create_advanced_tab(), "🛠️ Advanced")
 
         # Main Layout
         main_layout = QVBoxLayout(popup)
@@ -1992,9 +1988,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
         layout.setSpacing(12)  # Reduce spacing between elements
 
+        # Horizontal layout for Git HTTP Version
+        theme_layout = QHBoxLayout()
+
         # Label for Theme Selection
         theme_label = QLabel("Select Theme:")
-        layout.addWidget(theme_label)
+        theme_layout.addWidget(theme_label)
 
         # Theme Dropdown
         self.theme_dropdown = QComboBox()
@@ -2007,13 +2006,50 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.theme_dropdown.setCurrentText(current_theme)
         
         self.theme_dropdown.currentIndexChanged.connect(self.apply_selected_theme)
-        layout.addWidget(self.theme_dropdown)
+        theme_layout.addWidget(self.theme_dropdown)
+
+        # Align contents to the left
+        theme_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # Add horizontal layout to main vertical layout
+        layout.addLayout(theme_layout)
 
         # Add checkbox to disable rainbow effect
         self.disable_rainbow_checkbox = QCheckBox("Disable Rainbow Title", self)
         self.disable_rainbow_checkbox.setChecked(self.settings.get("disable_rainbow_title", False))
         self.disable_rainbow_checkbox.stateChanged.connect(self.toggle_rainbow_effect)
         layout.addWidget(self.disable_rainbow_checkbox)
+
+        tab.setLayout(layout)
+        return tab
+    
+    def create_advanced_tab(self):
+        """Create the General settings tab."""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
+        layout.setSpacing(12)  # Reduce spacing between elements
+
+        # Horizontal layout for Git HTTP Version
+        git_http_layout = QHBoxLayout()
+
+        # Git HTTP Version Label
+        git_http_label = QLabel("Git HTTP Version:")
+        git_http_layout.addWidget(git_http_label)
+
+        # Git HTTP Version Dropdown
+        self.git_http_dropdown = QComboBox()
+        self.git_http_dropdown.addItems(["HTTP/2", "HTTP/1.1"])  # Options
+        self.git_http_dropdown.setCurrentText(self.settings.get("git_http_version", "HTTP/2"))  # Load saved setting
+        self.git_http_dropdown.currentIndexChanged.connect(self.apply_git_http_version)  # Apply when changed
+        self.git_http_dropdown.setFixedSize(100, 30)
+        git_http_layout.addWidget(self.git_http_dropdown)
+
+        # Align contents to the left
+        git_http_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # Add horizontal layout to main vertical layout
+        layout.addLayout(git_http_layout)
 
         tab.setLayout(layout)
         return tab
@@ -2075,6 +2111,21 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             auto_install=self.auto_install_checkbox.isChecked(),
             skip_mod_selection=self.skip_mod_selection_checkbox.isChecked()
         )
+
+    def apply_git_http_version(self):
+        """Change Git HTTP version based on user selection."""
+        selected_version = self.git_http_dropdown.currentText()
+
+        if selected_version == "HTTP/1.1":
+            subprocess.run(["git", "config", "--global", "http.version", "HTTP/1.1"], check=False)
+            print("set HTTP version to 1.1")
+        elif selected_version == "HTTP/2":
+            subprocess.run(["git", "config", "--global", "--unset", "http.version"], check=False)  # Resets to HTTP/2
+            print("set HTTP version to 2")
+
+        # Save the new setting
+        self.save_settings(git_http_version=selected_version)
+
 
 ############################################################
 # Read and load user preferences
