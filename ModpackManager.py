@@ -1,10 +1,11 @@
 import os
 import platform
-import requests
+import urllib.request
 import shutil
 import subprocess
 import time
 import sys
+import http.client
 
 # Detect system platform
 system_platform = platform.system()
@@ -52,11 +53,8 @@ def fetch_latest_version():
     version_url = "https://github.com/Dimserene/Balatro-ModpackManager/releases/latest"  # URL to fetch latest tag
 
     try:
-        response = requests.get(version_url, timeout=10, allow_redirects=True)
-        response.raise_for_status()
-        
-        # Extract version number from the redirect URL (e.g., /releases/tag/v1.2.3)
-        latest_version = response.url.split("/")[-1]
+        with urllib.request.urlopen(version_url, timeout=10) as response:
+            latest_version = response.geturl().split("/")[-1]  # Extract version number from redirect URL
         
         if system_platform == "Windows":
             download_url = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/dist/ModpackManager-main.exe"
@@ -69,7 +67,7 @@ def fetch_latest_version():
         print(f"Latest version available: {latest_version}")
         return latest_version, download_url
 
-    except requests.RequestException as e:
+    except (urllib.error.URLError, http.client.HTTPException) as e:
         print(f"Failed to fetch latest version: {e}")
         return None, None
 
@@ -91,27 +89,13 @@ def get_current_version():
     return None
 
 def download_update(download_url):
-    """Download the latest version of the Modpack Manager."""
+    """Download the latest version of the Modpack Manager using urllib."""
+    new_exe_path = os.path.join(MANAGER_FOLDER, DOWNLOAD_NAME)
+
     try:
-        response = requests.get(download_url, stream=True, timeout=30)
-        response.raise_for_status()
-
-        new_exe_path = os.path.join(MANAGER_FOLDER, DOWNLOAD_NAME)
-        total_size = int(response.headers.get("content-length", 0))  # Get total file size
-        downloaded_size = 0
-
         print("Downloading update...")
+        urllib.request.urlretrieve(download_url, new_exe_path)
 
-        with open(new_exe_path, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-                downloaded_size += len(chunk)
-
-                # Simple progress indicator
-                percent = (downloaded_size / total_size) * 100 if total_size else 0
-                print(f"\rProgress: {percent:.2f}% ({downloaded_size // 1024} KB / {total_size // 1024} KB)", end="")
-
-        # Verify the downloaded file exists and is not empty
         if os.path.exists(new_exe_path) and os.path.getsize(new_exe_path) > 0:
             print("Update downloaded successfully.")
             return new_exe_path
@@ -119,7 +103,7 @@ def download_update(download_url):
             print("Downloaded file is empty or corrupted.")
             return None
 
-    except requests.RequestException as e:
+    except (urllib.error.URLError, http.client.HTTPException) as e:
         print(f"Failed to download update: {e}")
         return None
 
