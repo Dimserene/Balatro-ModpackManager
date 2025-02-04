@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.10.4] - 2025-02-04
+### Added
+- Now display mod counts in favorite, selected or not, and each genre or tags.
+- Now display search result mod count (hide initially and when search bar is empty).
+- Now Windows users can set launch method in setting (via Steam or directly launch executable).
+
+### Changed
+- Change settings layout from QTabBar (horizontal) to QListWidget (vertical)
+- Pinned search bar and search result to the top.
+
+### Fixed
+- Proper mods selection layout for resizing window (stretch scrollable part instead of button part.
+- Now Linux users can launch the game directly from the manager.
+
+---
+
 ## [1.10.3] - 2025-02-04
 ### Fixed
 - **Ensured missing settings keys are saved on startup**: The program now automatically adds missing keys in `user_settings.json` to prevent crashes. 
