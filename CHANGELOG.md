@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.10.3] - 2025-02-04
+### Fixed
+- **Ensured missing settings keys are saved on startup** 
+ - The program now automatically adds missing keys in `user_settings.json` to prevent crashes. 
+- **Prevented `NoneType` errors in settings** 
+ - Ensured `game_directory` and `mods_directory` always have valid values. 
+- **Fixed Git download failures (`RPC failed; curl 92 HTTP/2 stream was not closed cleanly`)** 
+ - Increased Git buffer size for large downloads. 
+ - Allowed switching between **HTTP/1.1** and **HTTP/2** for improved network stability. 
+- **Fixed hover effects disappearing after blinking animation** 
+ - Blinking buttons now properly **restore their hover styles** after stopping. 
+- **Fixed modpack integrity check scanning all folders** 
+ - Now **only checks top-level folders** inside `Mods` instead of scanning subdirectories. 
+
+### Added
+- **Git HTTP version toggle in settings** 
+ - New **dropdown in the Advanced tab** lets users switch between **HTTP/1.1** and **HTTP/2**.
+ - Changes apply instantly without requiring manual Git commands.
+- **"Advanced" tab in settings** 
+ - Now visible in the settings window for Git and other advanced configurations.
+
+---
+
 ## [1.10.2] - 2025-02-04
 ### Fixed
 - **Fatal import error**: Fixed fatal import git error causing manager malfunction.
@@ -37,7 +60,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Light/Dark Mode**: Introduced a dropdown in settings to switch between light and dark themes.
 - **Automatic Manager Updates**: The manager now checks for updates and installs them automatically.
-  
+ 
 ### Fixed
 - **Invisible Checkboxes**: Resolved an issue where checkboxes were not visible in certain themes.
 - **Remove and Backup Mods Overwriting Defaults**: Now properly retains custom settings.
@@ -67,8 +90,8 @@ All notable changes to this project will be documented in this file.
 ## [1.9.0] - 2025-01-30
 ### Added
 - **Settings Overhaul**: 
-  - Introduced a tabbed settings menu.
-  - New options for skipping mod selection, auto-install after downloads, and more.
+ - Introduced a tabbed settings menu.
+ - New options for skipping mod selection, auto-install after downloads, and more.
 - **First-Time User Guidance**: The manager now assists new users in downloading and installing modpacks and Lovely Injector.
 
 ### Fixed
@@ -300,9 +323,9 @@ All notable changes to this project will be documented in this file.
 ## [1.3.0] - 2024-09-08
 ### Added
 - **UI Enhancements**:
-  - Buttons now have hover and pressed indicators.
-  - Downloading and updating modpacks now display a progress popup.
-  - The progress popup now centers on the main window.
+ - Buttons now have hover and pressed indicators.
+ - Downloading and updating modpacks now display a progress popup.
+ - The progress popup now centers on the main window.
 
 ### Changed
 - **Backup Mods Folder Handling**: Changed the backup Mods folder prompt to a checkbox.
@@ -370,8 +393,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - **Modpack Info Update**: Now updates installed modpack info regardless of program location.
 - **Install Button Functionality**:
-  - Fixed issue where the install button became nonfunctional after being used once.
-  - Resolved problem where the install button wiped the Mods folder before saving.
+ - Fixed issue where the install button became nonfunctional after being used once.
+ - Resolved problem where the install button wiped the Mods folder before saving.
 
 ---
 

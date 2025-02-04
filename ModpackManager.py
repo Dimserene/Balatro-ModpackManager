@@ -202,11 +202,10 @@ def launch_manager():
             )
         
         elif system_platform in ["Linux", "Darwin"]:
-            if not os.path.exists(VENV_DIR):  # Ensure virtual environment exists
-                print("Setting up virtual environment...")
-                if not setup_virtual_env():
-                    print("Failed to set up virtual environment. Exiting.")
-                    return
+            print("Setting up virtual environment...")
+            if not setup_virtual_env():
+                print("Failed to set up virtual environment. Exiting.")
+                return
 
             venv_python = os.path.join(VENV_DIR, "bin", "python3")
             subprocess.Popen(

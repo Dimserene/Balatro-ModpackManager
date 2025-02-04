@@ -1,7 +1,6 @@
 {
-  "latest_version": "1.10.2",
+  "latest_version": "1.10.3",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
-  "changelog": "- Fixed fatal import git error causing manager malfunction.",
   "dependencies": {
     "7thbeatcards": ["Talisman"],
     "AntonosStakes": ["Talisman"],
