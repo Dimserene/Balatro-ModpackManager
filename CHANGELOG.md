@@ -6,24 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ## [1.10.3] - 2025-02-04
 ### Fixed
-- **Ensured missing settings keys are saved on startup** 
-The program now automatically adds missing keys in `user_settings.json` to prevent crashes. 
-- **Prevented `NoneType` errors in settings** 
-Ensured `game_directory` and `mods_directory` always have valid values. 
-- **Fixed Git download failures (`RPC failed; curl 92 HTTP/2 stream was not closed cleanly`)** 
-Increased Git buffer size for large downloads. 
-Allowed switching between **HTTP/1.1** and **HTTP/2** for improved network stability. 
-- **Fixed hover effects disappearing after blinking animation** 
-Blinking buttons now properly **restore their hover styles** after stopping. 
-- **Fixed modpack integrity check scanning all folders** 
-Now **only checks top-level folders** inside `Mods` instead of scanning subdirectories. 
+- **Ensured missing settings keys are saved on startup**: The program now automatically adds missing keys in `user_settings.json` to prevent crashes. 
+- **Prevented `NoneType` errors in settings**: Ensured `game_directory` and `mods_directory` always have valid values. 
+- **Fixed Git download failures (`RPC failed; curl 92 HTTP/2 stream was not closed cleanly`)**: Allowed switching between **HTTP/1.1** and **HTTP/2** for improved network stability. 
+- **Fixed hover effects disappearing after blinking animation**: Blinking buttons now properly **restore their hover styles** after stopping. 
+- **Fixed modpack integrity check scanning all folders**: Now **only checks top-level folders** inside `Mods` instead of scanning subdirectories. 
 
 ### Added
-- **Git HTTP version toggle in settings** 
-New **dropdown in the Advanced tab** lets users switch between **HTTP/1.1** and **HTTP/2**.
-Changes apply instantly without requiring manual Git commands.
-- **"Advanced" tab in settings** 
-Now visible in the settings window for Git and other advanced configurations.
+- **Git HTTP version toggle in settings**: New **dropdown in the Advanced tab** lets users switch between **HTTP/1.1** and **HTTP/2**.
+- **"Advanced" tab in settings**: Now visible in the settings window for Git and other advanced configurations.
 
 ---
 
