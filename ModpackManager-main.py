@@ -3317,6 +3317,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Create a popup window for mod selection
         popup = QDialog(self)
         popup.setWindowTitle("Mod Selection")
+        popup.resize(600, 500)
 
         # Create a QSplitter to divide left (filters) and middle (mods) panels
         splitter = QSplitter(popup)
@@ -3361,24 +3362,43 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Left panel (Filters)
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(10, 10, 10, 0)
 
-        left_scroll_area = QScrollArea(popup)
-        left_scroll_area.setWidgetResizable(True)
-        left_scroll_area.setWidget(left_panel)
+        # Create a container for the search bar and search result count
+        search_container = QWidget()
+        search_layout = QVBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
 
         # Search bar
         self.search_bar = QLineEdit(popup)
         self.search_bar.setPlaceholderText("Search mods...")
-        left_layout.addWidget(self.search_bar)
+        self.search_bar.textChanged.connect(self.filter_mods)
+        search_layout.addWidget(self.search_bar)
+
+        # Search results count label
+        self.search_result_label = QLabel("Results: 0", popup)
+        self.search_result_label.hide()  # Hide initially
+        search_layout.addWidget(self.search_result_label)
+
+        # Add search container to the left panel (ensuring it's pinned at the top)
+        left_layout.addWidget(search_container)
+
+        filters_scroll_area = QScrollArea()
+        filters_scroll_area.setWidgetResizable(True)
+
+        # Container for filters & mod list (inside scroll area)
+        filters_container = QWidget()
+        filters_layout = QVBoxLayout(filters_container)
+        filters_layout.setContentsMargins(0, 0, 0, 0)
 
         # Favorite mods filter
         self.favorite_filter_checkbox = QCheckBox(f"Favorites ({self.favorite_count})", popup)
         self.show_checked_checkbox = QCheckBox(f"Selected ({self.selected_count})", popup)
         self.show_unchecked_checkbox = QCheckBox(f"Deselected ({self.deselected_count})", popup)
 
-        left_layout.addWidget(self.favorite_filter_checkbox)
-        left_layout.addWidget(self.show_checked_checkbox)
-        left_layout.addWidget(self.show_unchecked_checkbox)
+        filters_layout.addWidget(self.favorite_filter_checkbox)
+        filters_layout.addWidget(self.show_checked_checkbox)
+        filters_layout.addWidget(self.show_unchecked_checkbox)
 
         # **Fix Toggle Issues: Ensure Only One of the Checkboxes is Checked at a Time**
         def handle_exclusive_filtering(checkbox_triggered):
@@ -3400,27 +3420,34 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if genres:
             genre_label = QLabel("Genres", popup)
             genre_label.setStyleSheet("font-weight: bold;")
-            left_layout.addWidget(genre_label)
+            filters_layout.addWidget(genre_label)
 
-        for genre in genres:
-            genre_checkbox = QCheckBox(f"{genre} ({genre_counts[genre]})", popup)  # Add count
-            left_layout.addWidget(genre_checkbox)
-            self.genre_checkboxes.append(genre_checkbox)
+            for genre in genres:
+                genre_checkbox = QCheckBox(f"{genre} ({genre_counts[genre]})", popup)  # Add count
+                filters_layout.addWidget(genre_checkbox)
+                self.genre_checkboxes.append(genre_checkbox)
 
         # Tags filter section (only if tags exist)
         self.tag_checkboxes = []
         if tags:
             tags_label = QLabel("Tags", popup)
             tags_label.setStyleSheet("font-weight: bold;")
-            left_layout.addWidget(tags_label)
+            filters_layout.addWidget(tags_label)
 
-        for tag in tags:
-            tag_checkbox = QCheckBox(f"{tag} ({tag_counts[tag]})", popup)  # Add count
-            left_layout.addWidget(tag_checkbox)
-            self.tag_checkboxes.append(tag_checkbox)
+            for tag in tags:
+                tag_checkbox = QCheckBox(f"{tag} ({tag_counts[tag]})", popup)  # Add count
+                filters_layout.addWidget(tag_checkbox)
+                self.tag_checkboxes.append(tag_checkbox)
 
-        # Spacer to fill the remaining space
-        left_layout.addStretch()
+        # Set the scrollable content
+        filters_container.setLayout(filters_layout)
+        filters_scroll_area.setWidget(filters_container)
+
+        # Add the search container and scrollable filters to the left layout
+        left_layout.addWidget(filters_scroll_area)  # Filters & mod list are scrollable
+
+        # Apply the layout to the left panel
+        left_panel.setLayout(left_layout)
 
         # Middle panel (Scrollable mod list)
         middle_panel = QWidget()
@@ -3565,16 +3592,19 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         right_layout.addStretch()
 
         # Add panels to splitter
-        splitter.addWidget(left_scroll_area)
+        splitter.addWidget(left_panel)
         splitter.addWidget(middle_scroll_area)
         splitter.addWidget(right_panel)
 
         # Set fixed width for left panel
-        splitter.setSizes([800, 1000, 400])
+        splitter.setSizes([500, 700, 300])
 
         # Layout for popup
         main_layout = QVBoxLayout(popup)
-        main_layout.addWidget(splitter)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Add the splitter (which contains the left, middle, and right panels)
+        main_layout.addWidget(splitter, 1)  # The '1' makes it stretchable
         
         self.mod_vars = mod_vars
 
@@ -3588,12 +3618,18 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             checkbox.stateChanged.connect(self.filter_mods)
 
         # Buttons for actions
+        bottom_container = QWidget()
+        bottom_layout = QVBoxLayout(bottom_container)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Buttons for actions
         button_container = QWidget()
         button_layout = QHBoxLayout(button_container)
+
         clear_button = QPushButton("Clear All", popup)
         reverse_button = QPushButton("Reverse Select", popup)
         feel_lucky_button = QPushButton("I Feel Lucky", popup)
-        save_button = QPushButton("Save & Install", popup)
+        save_button = QPushButton("Save && Install", popup)
 
         clear_button.clicked.connect(lambda: [checkbox.setChecked(False) for _, _, checkbox, _ in mod_vars])
         reverse_button.clicked.connect(lambda: self.reverse_select_with_dependencies(mod_vars, dependencies))
@@ -3604,7 +3640,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         button_layout.addWidget(reverse_button)
         button_layout.addWidget(feel_lucky_button)
         button_layout.addWidget(save_button)
-        main_layout.addWidget(button_container)
+
+        bottom_layout.addWidget(button_container)
 
         # Add checkboxes for Backup and Remove Mods
         checkbox_container = QWidget()
@@ -3619,7 +3656,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         checkbox_layout.addWidget(self.backup_checkbox)
         checkbox_layout.addWidget(self.remove_checkbox)
-        main_layout.addWidget(checkbox_container)
+
+        bottom_layout.addWidget(checkbox_container)
+
+        # Add the bottom layout to the main layout **AFTER** the splitter
+        main_layout.addStretch()  # This makes the top stretchable
+        main_layout.addWidget(bottom_container)  # Keeps bottom elements fixed
 
         # Close event handler to reset the flag when the window is closed
         def on_close():
@@ -3632,7 +3674,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     # Integrate the "Show favorites" filter
     def filter_mods(self):
 
-        query = self.search_bar.text().lower()
+        query = self.search_bar.text().strip().lower()
 
         selected_filters = {
             "genres": {checkbox.text().split(" (")[0] for checkbox in self.genre_checkboxes if checkbox.isChecked()},
@@ -3647,6 +3689,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         favorite_count = 0
         selected_count = 0
         deselected_count = 0
+        match_count = 0
 
         always_installed = {"Steamodded", "ModpackUtil"}  # Mods that are always installed
 
@@ -3682,11 +3725,21 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if show_only_checked and show_only_unchecked:
                 should_show = False  # Prevent both filters from being active at once
             if show_only_checked:
-                should_show = should_show and is_checked
+                should_show = should_show and _[2].isChecked()  # Checkbox is checked
             if show_only_unchecked:
-                should_show = should_show and not is_checked
+                should_show = should_show and not _[2].isChecked()
 
             mod_row_container.setVisible(should_show)
+
+            if should_show:
+                match_count += 1  # Count visible mods
+
+        # Update the search results count dynamically
+        if query:
+            self.search_result_label.setText(f"Results: {match_count}")
+            self.search_result_label.show()
+        else:
+            self.search_result_label.hide()  # Hide label when search bar is empty
 
         # Update checkboxes to reflect new counts dynamically
         self.favorite_filter_checkbox.setText(f"Favorites ({favorite_count})")
