@@ -1,7 +1,7 @@
 import tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
 from PyQt6.QtGui import QColor, QPixmap
-from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QTabWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+from PyQt6.QtCore import QSize, Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
+from PyQt6.QtWidgets import QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
 import git
 from git import Repo, GitCommandError
 from packaging.version import Version
@@ -15,7 +15,7 @@ from io import BytesIO
 
 DATE = "2025/02/04"
 ITERATION = "30"
-VERSION = Version("1.10.3")  # Current version of the Modpack Manager
+VERSION = Version("1.10.4")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
@@ -40,6 +40,7 @@ if system_platform == "Windows":
         "auto_install": False,
         "debug_mode": False,
         "git_http_version": "HTTP/2",  # Default to HTTP/2
+        "use_steam_launch": False,
         "disable_rainbow_title": False,
         "theme": "Light",
         "modpack_downloaded": "",
@@ -68,6 +69,7 @@ elif system_platform == "Linux":
             "auto_install": False,
             "debug_mode": False,
             "git_http_version": "HTTP/2",  # Default to HTTP/2
+            "use_steam_launch": False,
             "disable_rainbow_title": False,
             "theme": "Light",
             "modpack_downloaded": "",
@@ -88,6 +90,7 @@ elif system_platform == "Linux":
             "auto_install": False,
             "debug_mode": False,
             "git_http_version": "HTTP/2",  # Default to HTTP/2
+            "use_steam_launch": False,
             "disable_rainbow_title": False,
             "theme": "Light",
             "modpack_downloaded": "",
@@ -108,6 +111,7 @@ elif system_platform == "Darwin":
         "auto_install": False,
         "debug_mode": False,
         "git_http_version": "HTTP/2",  # Default to HTTP/2
+        "use_steam_launch": False,
         "disable_rainbow_title": False,
         "theme": "Light",
         "modpack_downloaded": "",
@@ -192,30 +196,35 @@ LIGHT_THEME = """
         background-color: transparent;  /* Transparent background for checkboxes */
     }
 
-    QTabWidget::pane {
+    QDialog {
         border: 1px solid #bbb;
-        padding: 6px;
     }
 
-    QTabBar::tab {
-        color: black;
-        padding: 6px 14px;
-        border: 1px solid #aaa;
-        margin-right: 4px;
-        font-weight: bold;
+    /* Sidebar (QListWidget) */
+    QListWidget {
+        background: #fefefe;
+        border: 1px solid #444;
         font: 10pt 'Helvetica';
-        min-width: 110px;
+        color: black;
     }
 
-    QTabBar::tab:selected {
+    QListWidget::item {
+        color: black;
+        border: 1px solid #aaa;
+        margin: 4px;
+        font: 10pt 'Helvetica';
+        min-height: 36px;  /* Increase height */
+    }
+
+    QListWidget::item:selected {
         background: #0078d7;
-        color: white;
+        color: black;
         border: 1px solid #005ea0;
     }
 
-    QTabBar::tab:hover {
+    QListWidget::item:hover {
         background: #ccc;
-        color: white;
+        color: black;
     }
 
     QCheckBox::indicator {
@@ -327,29 +336,35 @@ DARK_THEME = """
         background-color: transparent;  /* Transparent background for checkboxes */
     }
 
-    QTabWidget::pane {
+    QDialog {
         border: 1px solid #bbb;
-        padding: 6px;
     }
 
-    QTabBar::tab {
-        color: white;
-        padding: 6px 14px;
-        border: 1px solid #aaa;
-        margin-right: 4px;
-        font-weight: bold;
+    /* Sidebar (QListWidget) */
+    QListWidget {
+        background: #2c2c2c;
+        border: 1px solid #444;
         font: 10pt 'Helvetica';
-        min-width: 110px;
+        color: white;
     }
 
-    QTabBar::tab:selected {
+    QListWidget::item {
+        color: white;
+        border: 1px solid #aaa;
+        margin: 4px;
+        font: 10pt 'Helvetica';
+        min-height: 36px;  /* Increase height */
+    }
+
+    QListWidget::item:selected {
         background: #0078d7;
         color: white;
         border: 1px solid #005ea0;
     }
-    QTabBar::tab:hover {
+
+    QListWidget::item:hover {
         background: #ccc;
-        color: black;
+        color: white;
     }
 
     QCheckBox::indicator {
@@ -1779,6 +1794,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 ############################################################
 
     def open_settings_popup(self):
+
+        # Prevent opening multiple settings popups
+        if getattr(self, "settings_popup_open", False):
+            return
+
         # Prevent opening multiple settings popups
         if self.settings_popup_open:
             return
@@ -1792,20 +1812,32 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Create a new popup window
         popup = QDialog(self)
         popup.setWindowTitle("Settings")
-        popup.setFixedSize(450, 450)
+        popup.setFixedSize(600, 450)
 
-        # Create tab widget
-        tab_widget = QTabWidget(popup)
+        settings_list = QListWidget()
+        settings_list.setIconSize(QSize(24, 24))  # Ensure icons are visible
+        settings_list.setFixedWidth(180)  # Adjust sidebar width for better spacing
 
-        tab_widget.addTab(self.create_general_tab(), "⚙ General")
-        tab_widget.addTab(self.create_installation_tab(), "🔧 Installation")
-        tab_widget.addTab(self.create_theme_tab(), "✨ Theme")
-        tab_widget.addTab(self.create_advanced_tab(), "🛠️ Advanced")
+        settings_list.addItem("⚙ General")
+        settings_list.addItem("🔧 Installation")
+        settings_list.addItem("✨ Theme")
+        settings_list.addItem("🛠️ Advanced")
+
+        settings_stack = QStackedWidget()  # Holds different setting pages
+
+        # Add setting pages here (Widgets)
+        settings_stack.addWidget(self.create_general_tab())
+        settings_stack.addWidget(self.create_installation_tab())
+        settings_stack.addWidget(self.create_theme_tab())
+        settings_stack.addWidget(self.create_advanced_tab())
+
+        settings_list.currentRowChanged.connect(settings_stack.setCurrentIndex)
 
         # Main Layout
-        main_layout = QVBoxLayout(popup)
-        main_layout.addWidget(tab_widget)
-        popup.setLayout(main_layout)
+        layout = QHBoxLayout()
+        layout.addWidget(settings_list)
+        layout.addWidget(settings_stack)
+        popup.setLayout(layout)
 
         popup.finished.connect(lambda: setattr(self, "settings_popup_open", False))
         popup.exec()
@@ -2047,6 +2079,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Align contents to the left
         git_http_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # Add checkbox to Launch game via Steam (Windows)
+        self.use_steam_launch_checkbox = QCheckBox("Launch game via Steam (Windows)", self)
+        self.use_steam_launch_checkbox.setChecked(self.settings.get("use_steam_launch", False))
+        self.use_steam_launch_checkbox.stateChanged.connect(lambda: self.save_settings(use_steam_launch=self.use_steam_launch_checkbox.isChecked()))
+        layout.addWidget(self.use_steam_launch_checkbox)
 
         # Add horizontal layout to main vertical layout
         layout.addLayout(git_http_layout)
@@ -2359,83 +2397,51 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             )
             return
 
-        # Check if the game directory is set
-        if is_steam_deck:
+        # Windows Toggle: Use Steam Launch or Direct Launch
+        use_steam_launch = self.settings.get("use_steam_launch", True)  # Default: Steam Launch
+
+        # Common Steam launch command
+        steam_command = "steam://rungameid/2379780"
+            
+        if system_platform == "Windows":
             try:
-                # Check internal and external game paths
-                internal_game_dir = "/home/deck/.steam/steam/steamapps/common/Balatro/"
-                external_game_dir = "/run/media/deck/STEAM/steamapps/common/Balatro/"
+                if use_steam_launch:
+                    print(f"Launching game via Steam: {steam_command}")
+                    self.process = QProcess(self)
+                    self.process.start("cmd.exe", ["/c", "start", steam_command])
+                else:
+                    # Construct the path to the game executable
+                    self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
+                    game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
+                    self.profile_name = self.settings.get("profile_name")        
+                    self.mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
+                    remove_debug_folders(self.mods_path)
 
-                # Use external game path if internal is missing
-                game_directory = internal_game_dir if os.path.exists(internal_game_dir) else external_game_dir
-                self.settings["game_directory"] = game_directory  # Update settings dynamically
+                    if os.path.exists(game_executable):
+                        print(f"Launching {game_executable}")
+                        self.process = QProcess(self)
+                        self.process.start(game_executable)
+                    else:
+                        raise FileNotFoundError(f"Game executable not found: {game_executable}")
 
-                # Launch via Steam protocol
-                steam_command = "steam://rungameid/2379780"
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to launch game: {e}")
+
+        elif system_platform == "Linux":
+            try:
                 print(f"Launching game via Steam: {steam_command}")
                 self.process = QProcess(self)
-                self.process.start("xdg-open", [steam_command])
+                self.process.start("steam", [steam_command])
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to launch game via Steam: {e}")
 
-        elif system_platform == "Windows":
-            # Construct the path to the game executable
-            self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
-            game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
-            self.profile_name = self.settings.get("profile_name")        
-            self.mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
-            remove_debug_folders(self.mods_path)
-
-            try:
-                # Check if the executable exists
-                if os.path.exists(game_executable):
-                    print(f"Launching {game_executable}")
-                    # Use QProcess to launch the game in a non-blocking way
-                    self.process = QProcess(self)
-                    self.process.start(game_executable)
-                else:
-                    raise FileNotFoundError(f"Game executable not found: {game_executable}")
-            except Exception as e:
-                # Display an error message if something goes wrong
-                msg_box = QMessageBox()
-                msg_box.setIcon(QMessageBox.Icon.Critical)
-                msg_box.setWindowTitle("Error")
-                msg_box.setText(f"Failed to launch game: {e}")
-                msg_box.exec()
-
-        elif system_platform == "Linux":
-            # Construct the path to the game executable
-            game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
-
-            self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
-            self.profile_name = self.settings.get("profile_name")        
-            self.mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
-            remove_debug_folders(self.mods_path)
-
-            try:
-                # Use Steam to launch the game via its app ID
-                steam_command = "steam://rungameid/2379780"
-                print(f"Launching game via Steam: {steam_command}")
-                self.process = QProcess(self)
-                self.process.start("xdg-open", [steam_command])  # xdg-open is used to open URLs on Linux
-            except Exception as e:
-                # Display an error message if something goes wrong
-                msg_box = QMessageBox()
-                msg_box.setIcon(QMessageBox.Icon.Critical)
-                msg_box.setWindowTitle("Error")
-                msg_box.setText(f"Failed to launch game via Steam: {e}")
-                msg_box.exec()
-
         elif system_platform == "Darwin":  # macOS
-            # Path to run_lovely.sh
-
             self.game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
             lovely_script = os.path.abspath(os.path.expanduser(f"{self.game_dir}/run_lovely.sh"))       
             self.mods_path = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
             remove_debug_folders(self.mods_path)
 
-            # Check if the script exists
             if not os.path.exists(lovely_script):
                 QMessageBox.critical(
                     self,
@@ -2449,13 +2455,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.process.start("bash", [lovely_script])
 
         else:
-            # Unsupported platform
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle("Unsupported Platform")
-            msg_box.setText("Your operating system is not supported for launching the game.")
-            msg_box.exec()
-
+            QMessageBox.warning(self, "Unsupported Platform", "Your OS is not supported for launching the game.")
+            
     def apply_default_play_button_style(self):
         """ Apply default play button color (Green) """
         self.play_button.setStyleSheet("""
@@ -3272,7 +3273,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 self.excluded_mods = []  # No mods are excluded
                 self.install_mods(None)  # Pass None as we don't have a popup
 
-                # 🔴 FIX: Delay opening of custom mod selection popup to ensure UI updates
+                # Delay opening of custom mod selection popup to ensure UI updates
                 QTimer.singleShot(100, self.popup_custom_mod_selection)
             else:
                 # Show mod selection popup
@@ -3298,6 +3299,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         
     def popup_mod_selection(self, mod_list, dependencies):
 
+        mod_vars = []  # Clear any existing data
+
         # Add mods to the middle panel
         always_installed = {"Steamodded", "ModpackUtil"}  # Mods that are always installed and not displayed
 
@@ -3319,9 +3322,41 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         splitter = QSplitter(popup)
         splitter.setOrientation(Qt.Orientation.Horizontal)
 
-        # Extract unique genres and tags from metadata
-        genres = sorted(set(info['Genre'] for info in self.metadata.values()))
-        tags = sorted({tag for info in self.metadata.values() for tag in info['Tags']})
+        # Get the currently available mod list (only mods in the loaded modpack)
+        self.current_mods = set(mod_list)
+
+        # Extract unique genres and tags from metadata and count their occurrences
+        genre_counts = {}
+        tag_counts = {}
+        self.favorite_count = 0
+        self.selected_count = -2
+        self.deselected_count = 0
+
+        for mod in self.current_mods:
+            if mod in self.metadata:
+                mod_info = self.metadata[mod]
+
+                if mod_info.get("Genre"):
+                    genre = mod_info["Genre"]
+                    genre_counts[genre] = genre_counts.get(genre, 0) + 1  # Count genres
+
+                if isinstance(mod_info.get("Tags"), list):
+                    for tag in mod_info["Tags"]:
+                        tag_counts[tag] = tag_counts.get(tag, 0) + 1  # Count tags
+
+            # Count Favorites
+            if mod in self.favorite_mods:
+                self.favorite_count += 1
+
+            # Count Selected and Deselected Mods
+            if mod in self.excluded_mods:
+                self.deselected_count += 1
+            else:
+                self.selected_count += 1
+
+        # Sort genres and tags based on names
+        genres = sorted(genre_counts.keys())
+        tags = sorted(tag_counts.keys())
 
         # Left panel (Filters)
         left_panel = QWidget()
@@ -3332,35 +3367,57 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         left_scroll_area.setWidget(left_panel)
 
         # Search bar
-        search_bar = QLineEdit(popup)
-        search_bar.setPlaceholderText("Search mods...")
-        left_layout.addWidget(search_bar)
+        self.search_bar = QLineEdit(popup)
+        self.search_bar.setPlaceholderText("Search mods...")
+        left_layout.addWidget(self.search_bar)
 
         # Favorite mods filter
-        favorite_filter_checkbox = QCheckBox("Show favorites", popup)
-        left_layout.addWidget(favorite_filter_checkbox)
+        self.favorite_filter_checkbox = QCheckBox(f"Favorites ({self.favorite_count})", popup)
+        self.show_checked_checkbox = QCheckBox(f"Selected ({self.selected_count})", popup)
+        self.show_unchecked_checkbox = QCheckBox(f"Deselected ({self.deselected_count})", popup)
 
-        # Genre filter section
-        genre_label = QLabel("Genres", popup)
-        genre_label.setStyleSheet("font-weight: bold;")
-        left_layout.addWidget(genre_label)
+        left_layout.addWidget(self.favorite_filter_checkbox)
+        left_layout.addWidget(self.show_checked_checkbox)
+        left_layout.addWidget(self.show_unchecked_checkbox)
 
-        genre_checkboxes = []
+        # **Fix Toggle Issues: Ensure Only One of the Checkboxes is Checked at a Time**
+        def handle_exclusive_filtering(checkbox_triggered):
+            if checkbox_triggered == "checked":
+                self.show_unchecked_checkbox.blockSignals(True)  # Temporarily disable signal to prevent loop
+                self.show_unchecked_checkbox.setChecked(False)
+                self.show_unchecked_checkbox.blockSignals(False)
+            elif checkbox_triggered == "unchecked":
+                self.show_checked_checkbox.blockSignals(True)
+                self.show_checked_checkbox.setChecked(False)
+                self.show_checked_checkbox.blockSignals(False)
+            self.filter_mods()  # Always apply filters after state change
+
+        self.show_checked_checkbox.stateChanged.connect(lambda: handle_exclusive_filtering("checked") if self.show_checked_checkbox.isChecked() else self.filter_mods())
+        self.show_unchecked_checkbox.stateChanged.connect(lambda: handle_exclusive_filtering("unchecked") if self.show_unchecked_checkbox.isChecked() else self.filter_mods())
+
+        # Genre filter section (only if genres exist)
+        self.genre_checkboxes = []
+        if genres:
+            genre_label = QLabel("Genres", popup)
+            genre_label.setStyleSheet("font-weight: bold;")
+            left_layout.addWidget(genre_label)
+
         for genre in genres:
-            genre_checkbox = QCheckBox(genre, popup)
+            genre_checkbox = QCheckBox(f"{genre} ({genre_counts[genre]})", popup)  # Add count
             left_layout.addWidget(genre_checkbox)
-            genre_checkboxes.append(genre_checkbox)
+            self.genre_checkboxes.append(genre_checkbox)
 
-        # Tags filter section
-        tags_label = QLabel("Tags (WIP)", popup)
-        tags_label.setStyleSheet("font-weight: bold;")
-        left_layout.addWidget(tags_label)
+        # Tags filter section (only if tags exist)
+        self.tag_checkboxes = []
+        if tags:
+            tags_label = QLabel("Tags", popup)
+            tags_label.setStyleSheet("font-weight: bold;")
+            left_layout.addWidget(tags_label)
 
-        tag_checkboxes = []
         for tag in tags:
-            tag_checkbox = QCheckBox(tag, popup)
+            tag_checkbox = QCheckBox(f"{tag} ({tag_counts[tag]})", popup)  # Add count
             left_layout.addWidget(tag_checkbox)
-            tag_checkboxes.append(tag_checkbox)
+            self.tag_checkboxes.append(tag_checkbox)
 
         # Spacer to fill the remaining space
         left_layout.addStretch()
@@ -3411,8 +3468,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             mod_row_container.mousePressEvent = show_context_menu
 
-        mod_vars = []  # Clear any existing data
-
         def toggle_favorite(label, mod):
             """Toggle favorite state for the given mod."""
             if mod in self.favorite_mods:
@@ -3423,7 +3478,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 label.setText("★")  # Solid star
             
             self.save_favorites()  # Save favorites whenever they are toggled
-            filter_mods()  # Reapply the filter to reflect changes immediately
+            self.filter_mods()  # Reapply the filter to reflect changes immediately
 
         for mod in mod_list:
             if mod in always_installed:
@@ -3436,6 +3491,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
             mod_checkbox = QCheckBox(mod, popup)
             mod_checkbox.setChecked(mod not in self.excluded_mods)  # Default to checked
+
+            # Ensure changing a mod checkbox updates the filter
+            mod_checkbox.stateChanged.connect(self.filter_mods)
 
             # Add a star label for favorite mods
             star_label = QLabel("★" if mod in self.favorite_mods else "☆", popup)
@@ -3517,35 +3575,17 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Layout for popup
         main_layout = QVBoxLayout(popup)
         main_layout.addWidget(splitter)
-
-        # Integrate the "Show favorites" filter
-        def filter_mods():
-            query = search_bar.text().lower()
-            selected_genres = {checkbox.text() for checkbox in genre_checkboxes if checkbox.isChecked()}
-            selected_tags = {checkbox.text() for checkbox in tag_checkboxes if checkbox.isChecked()}
-            show_only_favorites = favorite_filter_checkbox.isChecked()
-
-            for mod_row_container, mod, _, _ in mod_vars:
-                mod_metadata = self.metadata.get(mod, {})
-                mod_genre = mod_metadata.get("Genre", "Unknown")
-                mod_tags = set(mod_metadata.get("Tags", []))
-                matches_query = query in mod.lower()
-                matches_genre = not selected_genres or mod_genre in selected_genres
-                matches_tags = not selected_tags or bool(selected_tags.intersection(mod_tags))
-                is_favorite = mod in self.favorite_mods  # Use self.favorite_mods directly
-
-                # Determine visibility
-                should_show = matches_query and matches_genre and matches_tags
-                if show_only_favorites:
-                    should_show = should_show and is_favorite
-
-                mod_row_container.setVisible(should_show)
+        
+        self.mod_vars = mod_vars
 
         # Connect the "Show favorites" checkbox to the filter function
-        favorite_filter_checkbox.stateChanged.connect(filter_mods)
-        search_bar.textChanged.connect(filter_mods)
-        for checkbox in genre_checkboxes + tag_checkboxes:
-            checkbox.stateChanged.connect(filter_mods)
+        self.favorite_filter_checkbox.stateChanged.connect(self.filter_mods)
+        self.show_checked_checkbox.stateChanged.connect(self.filter_mods)
+        self.show_unchecked_checkbox.stateChanged.connect(self.filter_mods)
+        self.search_bar.textChanged.connect(self.filter_mods)
+
+        for checkbox in self.genre_checkboxes + self.tag_checkboxes:
+            checkbox.stateChanged.connect(self.filter_mods)
 
         # Buttons for actions
         button_container = QWidget()
@@ -3588,6 +3628,70 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         popup.finished.connect(on_close)
         popup.exec()
+
+    # Integrate the "Show favorites" filter
+    def filter_mods(self):
+
+        query = self.search_bar.text().lower()
+
+        selected_filters = {
+            "genres": {checkbox.text().split(" (")[0] for checkbox in self.genre_checkboxes if checkbox.isChecked()},
+            "tags": {checkbox.text().split(" (")[0] for checkbox in self.tag_checkboxes if checkbox.isChecked()},
+        }
+        
+        show_only_favorites = self.favorite_filter_checkbox.isChecked()
+        show_only_checked = self.show_checked_checkbox.isChecked()
+        show_only_unchecked = self.show_unchecked_checkbox.isChecked()
+
+        # Reset counts before recalculating
+        favorite_count = 0
+        selected_count = 0
+        deselected_count = 0
+
+        always_installed = {"Steamodded", "ModpackUtil"}  # Mods that are always installed
+
+
+        for mod_row_container, mod, checkbox, _ in self.mod_vars:
+            if mod not in self.current_mods or mod in always_installed:  # Ignore mods not in the loaded modpack
+                mod_row_container.setVisible(False)
+                continue
+
+            mod_metadata = self.metadata.get(mod, {})
+            mod_genre = mod_metadata.get("Genre", "Unknown")
+            mod_tags = set(mod_metadata.get("Tags", []))
+
+            is_favorite = mod in self.favorite_mods  # Use self.favorite_mods directly
+            is_checked = checkbox.isChecked()
+
+            # Update counts dynamically
+            if is_favorite:
+                favorite_count += 1
+            if is_checked:
+                selected_count += 1
+            else:
+                deselected_count += 1
+
+            matches_query = query in mod.lower()
+            matches_genre = not selected_filters["genres"] or mod_genre in selected_filters["genres"]
+            matches_tags = not selected_filters["tags"] or bool(selected_filters["tags"].intersection(mod_tags))
+
+            # Determine visibility
+            should_show = matches_query and matches_genre and matches_tags
+            if show_only_favorites:
+                should_show = should_show and is_favorite
+            if show_only_checked and show_only_unchecked:
+                should_show = False  # Prevent both filters from being active at once
+            if show_only_checked:
+                should_show = should_show and is_checked
+            if show_only_unchecked:
+                should_show = should_show and not is_checked
+
+            mod_row_container.setVisible(should_show)
+
+        # Update checkboxes to reflect new counts dynamically
+        self.favorite_filter_checkbox.setText(f"Favorites ({favorite_count})")
+        self.show_checked_checkbox.setText(f"Selected ({selected_count})")
+        self.show_unchecked_checkbox.setText(f"Deselected ({deselected_count})")
 
     def popup_custom_mod_selection(self):
         """
@@ -3716,8 +3820,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         if var.isChecked():  # Include the mod
             include_required_mods(mod)
+            self.filter_mods()
         else:  # Exclude the mod
             exclude_dependent_mods(mod)
+            self.filter_mods()
 
     def reverse_select_with_dependencies(self, mod_vars, dependencies):
         """
@@ -3737,6 +3843,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         for mod_row_container, mod_name, checkbox, _ in mod_vars:
             if mod_row_container.isVisible():
                 self.handle_dependencies(mod_name, checkbox, mod_vars, dependencies)
+                
+        self.filter_mods()
 
     def save_preferences(self, mod_vars):
         # Collect mods that are unchecked (excluded from installation)
