@@ -442,17 +442,17 @@ def ensure_settings_folder_exists():
 
 ensure_settings_folder_exists()
 
-def set_git_buffer_size():
-    try:
-        # Increase the buffer size globally
-        subprocess.run(['git', 'config', '--global', 'http.postBuffer', '524288000'], check=True)
-        subprocess.run(['git', 'config', '--global', 'http.maxRequestBuffer', '524288000'], check=True)
-        subprocess.run(['git', 'config', '--global', 'core.compression', '0'], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to set Git buffer size: {e}")
+# def set_git_buffer_size():
+#     try:
+#         # Increase the buffer size globally
+#         subprocess.run(['git', 'config', '--global', 'http.postBuffer', '524288000'], check=True)
+#         subprocess.run(['git', 'config', '--global', 'http.maxRequestBuffer', '524288000'], check=True)
+#         subprocess.run(['git', 'config', '--global', 'core.compression', '0'], check=True)
+#     except subprocess.CalledProcessError as e:
+#         print(f"Failed to set Git buffer size: {e}")
 
 # Call this function before performing Git operations
-set_git_buffer_size()
+# set_git_buffer_size()
 
 def cache_modpack_data(data):
     """Cache modpack data to a local JSON file."""
