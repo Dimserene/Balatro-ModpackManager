@@ -15,7 +15,7 @@ from io import BytesIO
 
 DATE = "2025/02/04"
 ITERATION = "30"
-VERSION = Version("1.10.4")  # Current version of the Modpack Manager
+VERSION = Version("1.10.5")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
