@@ -13,9 +13,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/04"
+DATE = "2025/02/05"
 ITERATION = "30"
-VERSION = Version("1.10.5")  # Current version of the Modpack Manager
+VERSION = Version("1.10.6")  # Current version of the Modpack Manager
 
 system_platform = platform.system()
 
