@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.10.6] - 2025-02-05
+### Fixed
+- Fixed selection filter crash
+
+---
+
 ## [1.10.5] - 2025-02-04
 ### Fixed
 - Try to fix fatal crash by removing problematic git configs (potentially make into in-program settings)

@@ -3725,9 +3725,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             if show_only_checked and show_only_unchecked:
                 should_show = False  # Prevent both filters from being active at once
             if show_only_checked:
-                should_show = should_show and _[2].isChecked()  # Checkbox is checked
+                should_show = should_show and is_checked  # Checkbox is checked
             if show_only_unchecked:
-                should_show = should_show and not _[2].isChecked()
+                should_show = should_show and not is_checked
 
             mod_row_container.setVisible(should_show)
 
