@@ -16,6 +16,6 @@ Welcome to Dimserene's Modpack Manager! This tool helps you easily manage custom
    - Get the latest Modpack Manager executable file from the release.
 
 2. **Launch**:
-   - Double-click the `modpack_manager-(version).exe` file to start the program.
+   - Double-click the `modpack_manager.exe` file to start the program.
   
 ## For Linux and MacOS users, Please Read [This](https://github.com/Dimserene/Balatro-ModpackManager/wiki/for-MacOS-and-Linux-users).
