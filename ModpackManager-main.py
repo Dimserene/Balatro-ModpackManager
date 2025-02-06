@@ -1,9 +1,10 @@
 import logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QSlider, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
 import git
 from git import Repo, GitCommandError
+from datetime import datetime
 from packaging.version import Version
 from urllib.parse import urlparse
 from logging.handlers import RotatingFileHandler
@@ -44,8 +45,6 @@ DEFAULT_SETTINGS = {
     "use_steam_launch": False,
     "disable_rainbow_title": False,
     "theme": "Light",
-    "modpack_downloaded": "",
-    "modpack_installed": "",
 }
 
 # Configure paths based on OS
@@ -95,6 +94,10 @@ LOGO_PATH = os.path.join(ASSETS_FOLDER, "logoNewYear.png")  # File name to save 
 CHECKBOX_URL = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/assets/assets.zip"
 INFORMATION_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
 CSV_URL = "https://docs.google.com/spreadsheets/d/1L2wPG5mNI-ZBSW_ta__L9EcfAw-arKrXXVD-43eU4og/export?format=csv&gid=510782711"
+
+LOGS_DIR = os.path.join(SETTINGS_FOLDER, "log")
+os.makedirs(LOGS_DIR, exist_ok=True)
+log_filename = os.path.join(LOGS_DIR, f"modpack_manager_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
 
 LIGHT_THEME = """
     QWidget, QMainWindow, QDialog {
@@ -218,7 +221,7 @@ DARK_THEME = """
 
 def get_assets_path(filename):
     """Get the absolute path for assets."""
-    return os.path.abspath(os.path.join("ManagerSettings", "assets", filename))
+    return os.path.join("ManagerSettings", "assets", filename)
 
 # Ensure the Mods folder and required files exist
 def ensure_settings_folder_exists():
@@ -248,7 +251,7 @@ def cache_modpack_data(data):
     try:
         with open(CACHE_FILE, "w") as f:
             json.dump(data, f, indent=4)
-        logging.info("Modpack data cached successfully.")
+        logging.info("[Startup] Modpack data cached successfully.")
     except Exception as e:
         logging.error(f"Failed to cache modpack data: {e}", exc_info=True)
 
@@ -289,7 +292,7 @@ def download_and_extract_icons(url):
         with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
             zip_ref.extractall(ASSETS_FOLDER)
 
-        logging.info("Icons downloaded and extracted successfully.")
+        logging.debug("[Startup] Icons downloaded and extracted successfully.")
 
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
@@ -324,7 +327,7 @@ def is_online(test_url="https://www.google.com", parent=None):
 def fetch_modpack_data(url):
     """Fetch modpack data, with fallback to offline cache if offline."""
     if is_online():
-        logging.info("Online: Fetching modpack data...")
+        logging.info("[Startup] Online: Fetching modpack data...")
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise exception for HTTP errors
@@ -543,9 +546,9 @@ class ModpackDownloadWorker(QThread):
                 downloaded_size = 0
 
                 if system_platform == "Darwin":  # macOS
-                    modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+                    modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
                 elif system_platform in ["Windows", "Linux"]:
-                    modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+                    modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
                 local_file_path = os.path.join(modpack_directory, self.repo_name + '.zip')
 
@@ -846,6 +849,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Ensure settings are loaded before using them
         self.settings = self.load_settings()
         self.setup_logging()
+        self.check_game_directory()
 
         if not os.path.exists(LOGO_PATH):
             logging.info("[Startup] Downloading missing logo...")
@@ -863,7 +867,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         )
         self.splash.show()
 
-        logging.info("[Startup] Downloading icons...")
+        logging.debug("[Startup] Downloading icons...")
         download_and_extract_icons(CHECKBOX_URL)
 
         # Flags to track whether the popups are open
@@ -892,7 +896,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.load_favorites()  # Load favorites on startup
 
         # Load and process the CSV data
-        logging.info("[Startup] Fetching metadata CSV...")
+        logging.debug("[Startup] Fetching metadata CSV...")
         data = fetch_csv_data(CSV_URL)  # Replace with your CSV-fetching logic
         if data is not None:
             self.metadata = map_mods_to_metadata(data)  # Create metadata mapping
@@ -910,11 +914,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.apply_theme(LIGHT_THEME)
 
         if system_platform == "Darwin":  # macOS
-            self.game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
-            self.mods_dir = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"])))
+            self.game_dir = os.path.expanduser(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
+            self.mods_dir = os.path.expanduser(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"]))
         elif system_platform in ["Windows", "Linux"]:
-            self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
-            self.mods_dir = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"])))
+            self.game_dir = os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
+            self.mods_dir = os.path.expandvars(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"]))
             
         self.profile_name = self.settings.get("profile_name")
         self.selected_modpack = self.settings.get("default_modpack")
@@ -940,7 +944,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         
         # Resize the window to the minimum size required for content
         self.adjustSize()
-        self.setFixedSize(self.size())
 
         # Enable drag-and-drop
         self.setAcceptDrops(True)
@@ -950,7 +953,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.overlay_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.overlay_label.setStyleSheet("font-weight: bold; background-color: rgba(0, 0, 0, 200); font-size: 20pt; color: white")
         self.overlay_label.setWordWrap(True)  # Prevent text clipping
-        self.overlay_label.setText("Drag and drop to import custom mods...")
+        self.overlay_label.setText("Drag and drop to\nimport custom mods...")
         self.overlay_label.hide()  # Hide overlay initially
 
         self.initialize_branches()   # List all branches on startup
@@ -978,6 +981,14 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             ("That's it! You are now ready to use the Modpack Manager.", self)
         ]
 
+        # Automatically adjust window size based on content
+        self.adjustSize()
+
+        # Prevent manual resizing while still allowing dynamic resizing
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint)
+        self.setMinimumSize(self.sizeHint())  # Ensures a minimum size based on current content
+
         logging.info("[Startup] Modpack Manager initialized successfully.")
     
     def closeEvent(self, event):
@@ -988,6 +999,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Save settings without showing a popup
         self.save_settings(default_modpack=selected_modpack)
         logging.info(f"[Exit] Saved default modpack: {selected_modpack}")
+        logging.error("====================================================================")
 
         # Call the default closeEvent to continue closing the window
         super(ModpackManagerApp, self).closeEvent(event)
@@ -1033,9 +1045,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         logging.debug(f"[Import] Handling file: {path}")
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
         custom_dir = os.path.join(modpack_directory, "Custom")
         os.makedirs(custom_dir, exist_ok=True)  # Ensure Custom directory exists
         logging.info(f"[Import] Using custom mod directory: {custom_dir}")
@@ -1116,9 +1128,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         cleaned_name = re.sub(r'-(main|master|dev|beta|alpha|release|hotfix|patch\d+)$', '', mod_name, flags=re.IGNORECASE)
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
         custom_mods_dir = os.path.join(modpack_directory, "Custom")
         destination_path = os.path.join(custom_mods_dir, cleaned_name)
@@ -1241,9 +1253,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         file_name = os.path.basename(parsed_url.path)
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
         download_path = os.path.join(modpack_directory, "Custom", file_name)
 
@@ -1569,7 +1581,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 modpack_name = modpack["name"]
                 self.branch_data[modpack_name] = self.list_branches(modpack_name)
 
-        logging.info("[Branch] Branch data initialized.")
+        logging.debug("[Branch] Branch data initialized.")
 
         for modpack, branches in self.branch_data.items():
             logging.debug(f"[Branch] {modpack}: {branches}")
@@ -1580,15 +1592,19 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             for modpack in category.get("modpacks", []):
                 if modpack["name"] == modpack_name:
                     branches = modpack.get("branches", ["main"])
-                    logging.info(f"[Branch] Found branches for {modpack_name}: {branches}")
+                    logging.debug(f"[Branch] Found branches for {modpack_name}: {branches}")
                     return branches
         logging.warning(f"[Branch] No branches found for modpack: {modpack_name}, Default to main.")
         return []
 
     def update_branch_dropdown(self):
         """Update branch dropdown based on the selected modpack."""
+        if not hasattr(self, 'branch_var'):
+            logging.warning("Warning: branch_var is not initialized yet.")
+            return  # Prevent running the function if branch_var is missing
+            
         selected_modpack = self.modpack_var.currentText()
-        branches = self.branch_data.get(selected_modpack, [])
+        branches = self.branch_data.get(selected_modpack, ["main"])
 
         if branches:
             logging.info(f"[Branch] Updating branch dropdown for {selected_modpack}: {branches}")
@@ -1616,7 +1632,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if self.useful_hints:
             hint = random.choice(self.useful_hints)
             self.hint_label.setText(hint)
-            logging.info(f"[Hints] Updated hint: {hint}")
+            logging.debug(f"[Hints] Updated hint: {hint}")
         else:
             logging.warning("[Hints] No hints found. Hint label not updated.")
 
@@ -1717,14 +1733,16 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             settings_list.addItem(item)
 
-        settings_stack = QStackedWidget()  # Holds different setting pages
+        # Set a fixed width to prevent dynamic resizing
+        settings_list.setFixedWidth(150)  # Adjust width as needed
+        settings_list.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 
-        # Add setting pages here (Widgets)
-        settings_stack.addWidget(self.create_general_tab())
-        settings_stack.addWidget(self.create_installation_tab())
-        settings_stack.addWidget(self.create_theme_tab())
-        settings_stack.addWidget(self.create_advanced_tab())
-        settings_stack.addWidget(self.create_git_settings_tab())
+        settings_stack = QStackedWidget()  # Holds different setting pages
+        settings_stack.addWidget(self.create_general_tab(popup))
+        settings_stack.addWidget(self.create_installation_tab(popup))
+        settings_stack.addWidget(self.create_theme_tab(popup))
+        settings_stack.addWidget(self.create_advanced_tab(popup))
+        settings_stack.addWidget(self.create_git_settings_tab(popup))
 
         settings_list.currentRowChanged.connect(settings_stack.setCurrentIndex)
 
@@ -1732,17 +1750,17 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout = QHBoxLayout()
         layout.addWidget(settings_list)
         layout.addWidget(settings_stack)
-        popup.setLayout(layout)
 
+        popup.setLayout(layout)
         popup.finished.connect(lambda: setattr(self, "settings_popup_open", False))
         popup.exec()
         logging.info("[Settings] Settings popup closed.")
 
-    def create_general_tab(self):
+    def create_general_tab(self, parent=None):
         """Create the General settings tab."""
-        logging.info("[Settings] Loading General tab.")
+        logging.debug("[Settings] Loading General tab.")
 
-        tab = QWidget()
+        tab = QWidget(parent)
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.setSpacing(12)
@@ -1750,9 +1768,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Adjust default game directory based on OS
         default_game_dir = self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])
         if system_platform == "Darwin":  # macOS
-            default_game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
+            default_game_dir = os.path.expanduser(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
         elif system_platform in ["Windows", "Linux"]:
-            default_game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
+            default_game_dir = os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
 
         # List all .exe files in the game directory and strip ".exe"
         exe_files = self.get_exe_files(default_game_dir)
@@ -1866,11 +1884,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         tab.setLayout(layout)
         return tab
 
-    def create_installation_tab(self):
+    def create_installation_tab(self, parent=None):
         """Create the Installation settings tab."""
-        logging.info("[Settings] Loading Installation tab.")
+        logging.debug("[Settings] Loading Installation tab.")
 
-        tab = QWidget()
+        tab = QWidget(parent)
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
         layout.setSpacing(12)  # Reduce spacing between checkboxes
@@ -1881,24 +1899,28 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.backup_checkbox.stateChanged.connect(self.update_descriptions)
 
         self.backup_description = QLabel()
+        self.backup_description.setWordWrap(True)  # Enable word wrapping
 
         self.remove_checkbox = QCheckBox("Remove Mods Folder")
         self.remove_checkbox.setChecked(self.settings.get("remove_mods", True))
         self.remove_checkbox.stateChanged.connect(self.update_descriptions)
 
         self.remove_description = QLabel()
+        self.remove_description.setWordWrap(True)  # Enable word wrapping
 
         self.auto_install_checkbox = QCheckBox("Install Mods After Download / Update")
         self.auto_install_checkbox.setChecked(self.settings.get("auto_install", False))
         self.auto_install_checkbox.stateChanged.connect(self.update_descriptions)
 
         self.auto_install_description = QLabel()
+        self.auto_install_description.setWordWrap(True)  # Enable word wrapping
 
         self.skip_mod_selection_checkbox = QCheckBox("Skip Mod Selection")
         self.skip_mod_selection_checkbox.setChecked(self.settings.get("skip_mod_selection", False))
         self.skip_mod_selection_checkbox.stateChanged.connect(self.update_descriptions)
 
         self.skip_mod_selection_description = QLabel()
+        self.skip_mod_selection_description.setWordWrap(True)  # Enable word wrapping
 
         # Call `update_descriptions()` immediately to set initial values
         self.update_descriptions()
@@ -1919,26 +1941,26 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Dynamically update descriptions based on checkbox states."""
         if hasattr(self, "backup_description"):
             self.backup_description.setText(
-                "\tCreate a backup of the Mods folder before installing mods.\n" if self.backup_checkbox.isChecked()
-                else "\tDon't create a backup of the Mods folder before installing mods.\n"
+                "Create a backup of the Mods folder before installing mods.\n" if self.backup_checkbox.isChecked()
+                else "Don't create a backup of the Mods folder before installing mods.\n"
             )
 
         if hasattr(self, "remove_description"):
             self.remove_description.setText(
-                "\tRemove the Mods folder before installing mods.\n" if self.remove_checkbox.isChecked()
-                else "\tKeep the Mods folder before installing mods.\n"
+                "Remove the Mods folder before installing mods.\n" if self.remove_checkbox.isChecked()
+                else "Keep the Mods folder before installing mods.\n"
             )
 
         if hasattr(self, "auto_install_description"):
             self.auto_install_description.setText(
-                "\tAutomatically install mods after downloading or updating.\n" if self.auto_install_checkbox.isChecked()
-                else "\tManually install mods after downloading or updating.\n"
+                "Automatically install mods after downloading or updating.\n" if self.auto_install_checkbox.isChecked()
+                else "Manually install mods after downloading or updating.\n"
             )
 
         if hasattr(self, "skip_mod_selection_description"):
             self.skip_mod_selection_description.setText(
-                "\tSkip the mods selection dialog and install all mods automatically.\n" if self.skip_mod_selection_checkbox.isChecked()
-                else "\tManually select mods to install.\n"
+                "Skip the mods selection dialog and install all mods automatically.\n" if self.skip_mod_selection_checkbox.isChecked()
+                else "Manually select mods to install.\n"
             )
 
         # Automatically save settings whenever a checkbox is toggled
@@ -1949,11 +1971,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             skip_mod_selection=self.skip_mod_selection_checkbox.isChecked()
         )
 
-    def create_theme_tab(self):
+    def create_theme_tab(self, parent=None):
         """Create the Theme settings tab."""
-        logging.info("[Settings] Loading Theme tab.")
+        logging.debug("[Settings] Loading Theme tab.")
 
-        tab = QWidget()
+        tab = QWidget(parent)
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
         layout.setSpacing(12)  # Reduce spacing between elements
@@ -2016,11 +2038,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.save_settings()
         logging.info(f"[Settings] Rainbow title effect {'disabled' if disabled else 'enabled'}")
 
-    def create_advanced_tab(self):
+    def create_advanced_tab(self, parent=None):
         """Create the General settings tab."""
-        logging.info("[Settings] Loading Advanced tab.")
+        logging.debug("[Settings] Loading Advanced tab.")
 
-        tab = QWidget()
+        tab = QWidget(parent)
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.setSpacing(12)
@@ -2028,13 +2050,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Load default values
         default_values = {
             "log.level": "info",
-            "log.file": "modpack_manager.log",
+            "log.folder": LOGS_DIR,
             "log.enable_stacktrace": False,
         }
         
         # Load current settings (or use default if missing)
         self.settings.setdefault("log.level", default_values["log.level"])
-        self.settings.setdefault("log.file", default_values["log.file"])
+        self.settings.setdefault("log.folder", LOGS_DIR)
         self.settings.setdefault("log.enable_stacktrace", default_values["log.enable_stacktrace"])
 
         # Logging Level Dropdown
@@ -2051,18 +2073,18 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.addLayout(log_level_layout)
 
         # Log Output File Selection
-        log_file_layout = QHBoxLayout()
-        log_file_label = QLabel("Log File:")
-        log_file_layout.addWidget(log_file_label)
+        log_folder_layout = QHBoxLayout()
+        log_folder_label = QLabel("Log Folder:")
+        log_folder_layout.addWidget(log_folder_label)
 
-        self.log_file_input = QLineEdit(self.settings.get("log.file", "modpack_manager.log"))
-        log_file_layout.addWidget(self.log_file_input)
+        self.log_folder_input = QLineEdit(self.settings.get("log.folder", LOGS_DIR))
+        log_folder_layout.addWidget(self.log_folder_input)
 
-        log_file_browse = QPushButton("Browse")
-        log_file_browse.clicked.connect(self.browse_log_file)
-        log_file_layout.addWidget(log_file_browse)
+        log_folder_browse = QPushButton("Browse")
+        log_folder_browse.clicked.connect(self.browse_log_folder)
+        log_folder_layout.addWidget(log_folder_browse)
 
-        layout.addLayout(log_file_layout)
+        layout.addLayout(log_folder_layout)
 
         # Enable Stack Trace Checkbox
         self.stacktrace_checkbox = QCheckBox("Enable Stack Trace Logging")
@@ -2079,6 +2101,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.use_steam_launch_checkbox.hide()  # Hide overlay initially
 
         layout.addWidget(self.use_steam_launch_checkbox)
+
+        # "Remove user_settings.json" Button
+        remove_settings_button = QPushButton("Remove user_settings.json")
+        remove_settings_button.setStyleSheet("background-color: red; color: white; font-weight: bold;")
+        remove_settings_button.clicked.connect(lambda: self.remove_user_settings(parent))
+        layout.addWidget(remove_settings_button)
+
+        tab.setLayout(layout)
+        return tab
 
         # # LuaJIT2 Experimental Checkbox
         # self.luajit_checkbox = QCheckBox("Enable LuaJIT2 (Experimental)", tab)
@@ -2101,17 +2132,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         logging.debug(f"[Settings] {setting_key} set to {value}")
         self.setup_logging()  # Reapply logging immediately
 
-    def browse_log_file(self):
+    def browse_log_folder(self):
         """Open file dialog to select a log file."""
         logging.debug("[Settings] User opened file browser for log file selection.")
-        file_dialog = QFileDialog()
-        file_dialog.setFileMode(QFileDialog.FileMode.AnyFile)
-        file_dialog.setNameFilter("Log Files (*.log);;All Files (*)")
-        
-        if file_dialog.exec():
-            selected_file = file_dialog.selectedFiles()[0]
-            self.log_file_input.setText(selected_file)
-            self.apply_log_setting("log.file", selected_file)
+        log_folder = QFileDialog.getExistingDirectory(None, "Select Log Folder", self.log_folder_input.text())
+
+        if log_folder:
+            self.log_folder_input.setText(log_folder)
+            self.save_settings(log_folder=log_folder)
+            QMessageBox.information(None, "Log Folder Updated", f"New log folder: {log_folder}")
         
     def setup_logging(self):
         """Configure logging based on user settings."""
@@ -2122,38 +2151,44 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             "error": logging.ERROR
         }
 
-        log_file = self.settings.get("log.file", "modpack_manager.log")
+        log_folder = self.settings.get("log.folder", LOGS_DIR)
         log_level = self.settings.get("log.level", "info").lower()
         enable_stacktrace = self.settings.get("log.enable_stacktrace", False)
 
         # Ensure log directory exists
-        log_directory = os.path.dirname(log_file)
-        if log_directory and not os.path.exists(log_directory):
-            os.makedirs(log_directory)
-            
-        # Remove previous handlers to avoid duplicates
-        logger = logging.getLogger()
-        while logger.hasHandlers():
-            logger.removeHandler(logger.handlers[0])
+        if not os.path.exists(log_folder):
+            os.makedirs(log_folder)
 
-        # Create a rotating log file (5MB max per file, keep last 3 backups)
-        file_handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=3)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+        # Only create a single log file per session
+        if not hasattr(self, "log_filename"):
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.log_filename = os.path.join(log_folder, f"modpack_manager_{timestamp}.log")
+
+        print(f"[DEBUG] Log file will be: {self.log_filename}")
+
+        # Get the root logger
+        logger = logging.getLogger()
+        logger.setLevel(log_level_map.get(log_level, logging.INFO))
+
+        # Remove existing handlers to prevent duplication
+        if logger.hasHandlers():
+            logger.handlers.clear()
+
+        # Create file handler
+        file_handler = logging.FileHandler(self.log_filename, mode='w', encoding="utf-8")
+        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 
         # Create console handler
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 
-        # Set logging level
-        logger.setLevel(log_level_map.get(log_level, logging.INFO))
-
-        # Add handlers
+        # Add handlers to logger
         logger.addHandler(file_handler)
         logger.addHandler(console_handler)
 
         if enable_stacktrace:
-            logging.getLogger().setLevel(logging.DEBUG)
-        
+            logger.setLevel(logging.DEBUG)     
+
         logging.info("[LOGGING] Modpack Manager started.")
         logging.info("[LOGGING] Logging system initialized.")
 
@@ -2164,11 +2199,45 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         logging.info(f"[Settings] LuaJIT2 {'enabled' if self.luajit_checkbox.isChecked() else 'disabled'}")
         self.install_lovely_injector()
 
-    def create_git_settings_tab(self):
-        """Create the General settings tab."""
-        logging.info("[Settings] Loading Git settings tab.")
+    def remove_user_settings(self, parent):
+        """Deletes the user_settings.json file and resets to defaults."""
+        confirm = QMessageBox.question(
+            parent, "Confirm Removal", 
+            "Are you sure you want to delete 'user_settings.json'?\nThis will reset all settings.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
 
-        tab = QWidget()
+        if confirm == QMessageBox.StandardButton.Yes:
+            logging.info("[Settings] User confirmed settings file removal.")
+
+            try:
+                if os.path.exists(SETTINGS_FILE):
+                    os.remove(SETTINGS_FILE)
+                    logging.info(f"[Settings] Successfully removed {SETTINGS_FILE}.")
+
+                    self.settings = DEFAULT_SETTINGS.copy()  # Reset to default
+                    logging.info("[Settings] Settings reset to default.")
+
+                    # Inform user that the app needs to restart
+                    QMessageBox.information(parent, "Restart Required", "Settings file removed. The app will now close.\nPlease relaunch manually.")
+
+                    # Close the application
+                    logging.info("[Settings] Closing application after settings reset.")
+                    sys.exit(0)   # Gracefully quit the app
+
+                else:
+                    logging.warning(f"[Settings] {SETTINGS_FILE} not found. No action taken.")
+                    QMessageBox.warning(parent, "Warning", "Settings file not found.")
+
+            except Exception as e:
+                logging.error(f"[Settings] Failed to remove settings file: {e}", exc_info=True)
+                QMessageBox.critical(parent, "Error", f"Failed to remove settings file:\n{e}")
+
+    def create_git_settings_tab(self, parent=None):
+        """Create the General settings tab."""
+        logging.debug("[Settings] Loading Git settings tab.")
+
+        tab = QWidget(parent)
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align everything to the top
         layout.setSpacing(12)  # Reduce spacing between elements
@@ -2347,9 +2416,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if not hasattr(self, "settings") or not isinstance(self.settings, dict):
             self.settings = {}
 
-        # Merge settings with defaults, avoiding None values
-        for key, default_value in DEFAULT_SETTINGS.items():
-            self.settings[key] = kwargs.get(key, self.settings.get(key, default_value)) or default_value
+        # Update settings only if keys are provided
+        for key in DEFAULT_SETTINGS.keys():
+            if key in kwargs and kwargs[key] is not None:
+                self.settings[key] = kwargs[key]
 
         # Write settings to the JSON file
         try:
@@ -2372,9 +2442,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         
         # Reset game directory
         if system_platform == "Darwin":  # macOS
-            game_dir_entry.setText(os.path.abspath(os.path.expanduser(self.settings.get("game_directory"))))
+            game_dir_entry.setText(os.path.expanduser(self.settings.get("game_directory")))
         elif system_platform in ["Windows", "Linux"]:
-            game_dir_entry.setText(os.path.abspath(os.path.expandvars(self.settings.get("game_directory"))))
+            game_dir_entry.setText(os.path.expandvars(self.settings.get("game_directory")))
 
     def reset_modpack_dir_to_default(self, modpack_dir_entry):
         """Reset modpack directory setting to default."""
@@ -2383,9 +2453,37 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         
         # Reset game directory
         if system_platform == "Darwin":  # macOS
-            modpack_dir_entry.setText(os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory"))))
+            modpack_dir_entry.setText(os.path.expanduser(self.settings.get("modpack_directory")))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_dir_entry.setText(os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory"))))
+            modpack_dir_entry.setText(os.path.expandvars(self.settings.get("modpack_directory")))
+
+    def check_game_directory(self):
+        """Check if the game executable exists, otherwise prompt the user."""
+        if system_platform == "Darwin":  # macOS
+            game_exe = "Balatro.app"
+
+        elif system_platform == "Linux":
+            game_exe = "Balatro.exe"
+
+        elif system_platform == "Windows":
+            game_exe = "balatro.exe"
+
+        game_path = os.path.join(self.settings.get("game_directory", ""), game_exe)
+
+        if not os.path.exists(game_path):
+            QMessageBox.warning(None, "Game Not Found", "Game was not found in the default directory. Please select the correct game directory.")
+
+            # Open file dialog to select the correct game folder
+            game_dir = QFileDialog.getExistingDirectory(None, "Select Balatro Game Directory", "")
+
+            if game_dir:
+                self.settings["game_directory"] = game_dir
+                self.save_settings()
+                logging.info(f"[Settings] Game directory saved: {game_dir}")
+                QMessageBox.information(None, "Game Directory Set", f"Game directory saved: {game_dir}")
+            else:
+                logging.warning(f"[Settings] Game directory selection was canceled. Some features may not work correctly.")
+                QMessageBox.critical(None, "Error", "Game directory selection was canceled. Some features may not work correctly.")
 
     # Function to browse and update the directory
     def browse_directory(self, entry_widget):
@@ -2404,9 +2502,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Expand and normalize the directory path
 
         if system_platform == "Darwin":  # macOS
-            expanded_path = os.path.abspath(os.path.expanduser(path))
+            expanded_path = os.path.expanduser(path)
         elif system_platform in ["Windows", "Linux"]:
-            expanded_path = os.path.abspath(os.path.expandvars(path))
+            expanded_path = os.path.expandvars(path)
 
         logging.info(f"[Directory] Attempting to open directory: {expanded_path}")
 
@@ -2449,9 +2547,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.settings["mods_directory"] = new_mods_dir  # Update the settings
 
         if system_platform == "Darwin":  # macOS
-            self.mods_dir = os.path.abspath(os.path.expanduser(new_mods_dir))
+            self.mods_dir = os.path.expanduser(new_mods_dir)
         elif system_platform in ["Windows", "Linux"]:
-            self.mods_dir = os.path.abspath(os.path.expandvars(new_mods_dir))
+            self.mods_dir = os.path.expandvars(new_mods_dir)
 
         # Update the mods_dir_entry to show the new directory
         mods_dir_entry.setReadOnly(False)  # Temporarily make it writable
@@ -2497,8 +2595,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         except Exception as e:
             logging.error(f"[Profile] Failed to create {os.path.basename(destination_exe)}: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error",
-                f"Failed to create {os.path.basename(destination_exe)}: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to create {os.path.basename(destination_exe)}: {e}")
 
     def get_exe_files(self, directory):
         """Get a list of executables or app bundles in the directory, stripping extensions."""
@@ -2549,10 +2646,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     self.process.start("cmd.exe", ["/c", "start", steam_command])
                 else:
                     # Construct the path to the game executable
-                    self.game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
+                    self.game_dir = os.path.expandvars(self.settings.get("game_directory"))
                     self.profile_name = self.settings.get("profile_name")        
                     game_executable = os.path.join(self.game_dir, f"{self.profile_name}.exe")
-                    self.mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
+                    self.mods_path = os.path.expandvars(self.settings.get("mods_directory"))
                     remove_debug_folders(self.mods_path)
 
                     if os.path.exists(game_executable):
@@ -2577,9 +2674,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 QMessageBox.critical(self, "Error", f"Failed to launch game via Steam: {e}")
 
         elif system_platform == "Darwin":  # macOS
-            self.game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
-            lovely_script = os.path.abspath(os.path.expanduser(f"{self.game_dir}/run_lovely.sh"))       
-            self.mods_path = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
+            self.game_dir = os.path.expanduser(self.settings.get("game_directory"))
+            lovely_script = os.path.expanduser(f"{self.game_dir}/run_lovely.sh")   
+            self.mods_path = os.path.expanduser(self.settings.get("mods_directory"))
             remove_debug_folders(self.mods_path)
 
             if not os.path.exists(lovely_script):
@@ -2676,9 +2773,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Paths for version and modpack name files
         if system_platform == "Darwin":  # macOS
-            mods_path = os.path.join(os.path.dirname(os.path.abspath(os.path.expanduser(self.mods_dir))), "ModpackUtil")
+            mods_path = os.path.join(os.path.dirname(os.path.expanduser(self.mods_dir)), "ModpackUtil")
         elif system_platform in ["Windows", "Linux"]:
-            mods_path = os.path.join(os.path.dirname(os.path.abspath(os.path.expandvars(self.mods_dir))), "ModpackUtil")
+            mods_path = os.path.join(os.path.dirname(os.path.expandvars(self.mods_dir)), "ModpackUtil")
 
         current_version_file = os.path.join(mods_path, 'CurrentVersion.txt')
         modpack_name_file = os.path.join(mods_path, 'ModpackName.txt')
@@ -2712,9 +2809,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Detect the operating system and resolve the install path
         if system_platform == "Darwin":  # macOS
-            install_path = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"])))
+            install_path = os.path.expanduser(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"]))
         elif system_platform in ["Windows", "Linux"]:
-            install_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"])))
+            install_path = os.path.expandvars(self.settings.get("mods_directory", DEFAULT_SETTINGS["mods_directory"]))
 
         # Paths for version and modpack name files
         mods_path = os.path.join(install_path, 'ModpackUtil')
@@ -2756,6 +2853,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         return None
 
     def update_modpack_description(self):
+
+        if not hasattr(self, 'description_label'):
+            logging.error("Error: description_label is not initialized.")
+            return
+        
         selected_modpack = self.modpack_var.currentText()
         modpack_info = self.get_modpack_info(selected_modpack)
         if modpack_info:
@@ -2806,8 +2908,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def setup_button_blinking(self):
         """Blink the Download or Install button based on user's modpack status."""
-        logging.info("[Blink] Setting up button blinking...")
+        logging.debug("[Blink] Setting up button blinking...")
 
+        if not hasattr(self, 'branch_var'):
+            logging.warning("Warning: branch_var is not initialized yet. Delaying execution.")
+            QTimer.singleShot(100, self.setup_button_blinking)  # Retry after a short delay
+            return
+        
         # Ensure settings are loaded before using them
         self.settings = self.load_settings()
         selected_modpack = self.modpack_var.currentText()
@@ -2815,93 +2922,95 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         repo_name = f"{selected_modpack}-{selected_branch}" if selected_branch != "main" else selected_modpack
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory", DEFAULT_SETTINGS["modpack_directory"])))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory", DEFAULT_SETTINGS["modpack_directory"]))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory", DEFAULT_SETTINGS["modpack_directory"])))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory", DEFAULT_SETTINGS["modpack_directory"]))
 
         repo_path = os.path.join(modpack_directory, repo_name)
         modpack_downloaded = os.path.exists(repo_path)  # Check if folder exists
 
         if system_platform == "Darwin":  # macOS
-            mods_path = os.path.join(os.path.abspath(os.path.expanduser(self.mods_dir)), "ModpackUtil")
+            mods_path = os.path.join(os.path.expanduser(self.mods_dir), "ModpackUtil")
         elif system_platform in ["Windows", "Linux"]:
-            mods_path = os.path.join(os.path.abspath(os.path.expandvars(self.mods_dir)), "ModpackUtil")
+            mods_path = os.path.join(os.path.expandvars(self.mods_dir), "ModpackUtil")
 
         modpack_installed = os.path.exists(mods_path)
         lovely_injector_installed = self.check_lovely_injector_installed()
 
+        # Paths for ModpackName.txt
+        installed_modpack_name_file = os.path.join(mods_path, "ModpackName.txt")
+        selected_modpack_name_file = os.path.join(repo_path, "Mods", "ModpackUtil", "ModpackName.txt")
+
+        # Read content of both ModpackName.txt files, defaulting to empty string if missing
+        installed_modpack_name = self.read_file_content(installed_modpack_name_file) or ""
+        logging.debug(f"installed_modpack_name = {installed_modpack_name}")
+        selected_modpack_name = self.read_file_content(selected_modpack_name_file) or ""
+        logging.debug(f"selected_modpack_name = {selected_modpack_name}")
+
+        is_different_modpack = installed_modpack_name != selected_modpack_name
+
         # Stop all previous blinking before setting new ones
         self.stop_blinking()
 
-        # Ensure that NO buttons blink if a download is in progress
+        # Stop blinking if modpack is installed and matches the selected one
+        if modpack_installed and not is_different_modpack:
+            logging.info("[Blink] Modpack is installed correctly and matches selected. Stopping all blinking.")
+            self.stop_blinking()
+            return  # Exit the function immediately
+
+        # ✅ Ensure that NO buttons blink if a download is in progress
         if hasattr(self, "worker") and self.worker is not None and self.worker.isRunning():
-            logging.info("Download is still running. No buttons will blink.")
+            logging.info("[Blink] Download is still running. No buttons will blink.")
             return  # Exit early, preventing any blinking
 
+        # ✅ Blink Install Lovely button if missing
         if not lovely_injector_installed:
-            logging.info("[Blink] Lovely Injector is missing. Blinking Install Lovely button.")
+            logging.debug("[Blink] Lovely Injector is missing. Blinking Install Lovely button.")
             self.blink_button(self.install_lovely_button)
 
-        # If the user has never downloaded a modpack, blink the "Download" button
+        # ✅ Blink Download button if modpack isn't downloaded
         if not modpack_downloaded:
-            logging.info(f"[Blink] Modpack '{selected_modpack}' is not downloaded. Blinking Download button.")
+            logging.debug(f"[Blink] Modpack '{selected_modpack}' is not downloaded. Blinking Download button.")
             self.blink_button(self.download_button)
 
-        # If a modpack has been downloaded but not installed, blink the "Install" button
-        elif modpack_downloaded and not modpack_installed:
-            logging.info(f"[Blink] Modpack '{selected_modpack}' is downloaded but not installed. Blinking Install button.")
+        # ✅ Blink Install button only if modpack is downloaded but not installed (or different)
+        if modpack_downloaded and  is_different_modpack:
+            logging.debug(f"[Blink] Modpack '{selected_modpack}' is downloaded but different from current install. Blinking Install button.")
             self.blink_button(self.install_button)
 
     def blink_button(self, button):
-        """Make the given button blink with a soft yellow effect."""
-        logging.info(f"[Blink] Starting blinking effect for button: {button.text()}")
+        """Make the given button blink with a soft yellow effect, preventing multiple timers."""
+        
+        if not hasattr(self, "blink_timers"):  
+            self.blink_timers = {}  # Store active blink timers for each button
 
-        # Ensure there's only one timer running
-        if hasattr(self, "blink_timer") and self.blink_timer:
-            if self.blink_timer.isActive():
-                self.blink_timer.stop()
+        # Stop existing blink timer if it exists
+        if button in self.blink_timers and self.blink_timers[button].isActive():
+            self.blink_timers[button].stop()
+            del self.blink_timers[button]
 
-        # Create a new blinking timer
         self.blink_state = True  # Track blinking state
-        self.blink_timer = QTimer(self)
-        self.blink_timer.timeout.connect(lambda: self.toggle_button_style(button))
-        self.blink_timer.start(500)  # Blink every 500ms
+        self.blink_timers[button] = QTimer(self)
 
-    def toggle_button_style(self, button):
-        """Toggle button color for blinking effect."""
-        self.blink_state = not self.blink_state
-        if self.blink_state:
-            logging.debug(f"[Blink] {button.text()} is now highlighted.")
-            button.setStyleSheet("background-color: rgba(255, 255, 150, 180); font: 12pt 'Helvetica'")
-        else:
-            logging.debug(f"[Blink] {button.text()} returned to normal state.")
-            button.setStyleSheet("""
-                                 
+        def toggle_button_style():
+            """Toggle the button color for blinking effect."""
+            self.blink_state = not self.blink_state
+            if self.blink_state:
+                button.setStyleSheet("""
                 QPushButton {
-                font: 12pt 'Helvetica';
-                background-color: none;
+                    font: 12pt 'Helvetica';
+                    background-color: rgba(255, 255, 150, 180);
                 }
-                
                 QPushButton:hover {
                     background-color: #dadada;
                 }
-
                 QPushButton:pressed {
                     background-color: #bcbcbc;
                 }
-                                 
             """)
-
-    def stop_blinking(self):
-        """Stops all blinking buttons and resets their styles."""
-        if hasattr(self, "blink_timer") and self.blink_timer:
-            if self.blink_timer.isActive():
-                self.blink_timer.stop()
-            logging.info("[Blink] Stopped all blinking effects.")
-        
-        buttons = [self.download_button, self.install_button, self.install_lovely_button]
-        for button in buttons:
-            button.setStyleSheet("""
+                
+            else:
+                button.setStyleSheet("""
                 QPushButton {
                     font: 12pt 'Helvetica';
                     background-color: none;
@@ -2913,6 +3022,29 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                     background-color: #bcbcbc;
                 }
             """)
+
+        self.blink_timers[button].timeout.connect(toggle_button_style)
+        self.blink_timers[button].start(500)  # Set blinking interval (500ms)
+
+    def stop_blinking(self):
+        """Stops all active blink timers and resets button styles."""
+        if hasattr(self, "blink_timers"):
+            for button, timer in self.blink_timers.items():
+                timer.stop()
+                button.setStyleSheet("""
+                QPushButton {
+                    font: 12pt 'Helvetica';
+                    background-color: none;
+                }
+                QPushButton:hover {
+                    background-color: #dadada;
+                }
+                QPushButton:pressed {
+                    background-color: #bcbcbc;
+                }
+            """)
+
+            self.blink_timers.clear()  # Remove all stored timers
 
     def download_modpack(self, main_window=None, clone_url=None):
         """Download the selected modpack with a prompt for overwriting."""
@@ -2929,9 +3061,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         folder_name = f"{modpack_name}-{selected_branch}" if selected_branch != "main" else modpack_name
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
     
         repo_path = os.path.join(modpack_directory, folder_name)
 
@@ -3000,11 +3132,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setStyleSheet(theme_styles.get(self.settings.get("theme"), theme_styles["Light"]))
 
         # Create a custom QLabel for the message with the modpack name
-        self.label = QLabel(f"Downloading {modpack_name}({selected_branch})...\n")
+        self.label = QLabel(f"Downloading {modpack_name}({selected_branch})...")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet("QLabel { background-color: transparent; }")
 
-        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n")  # Show the elapsed time
+        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n\n")  # Show the elapsed time
         self.elapsed_time_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.elapsed_time_label.setStyleSheet("QLabel { font: 10pt 'Helvetica'; font-weight: normal; background-color: transparent; }")
 
@@ -3068,7 +3200,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         if success:
             logging.info(f"[Download] Successfully downloaded {self.modpack_var.currentText()}. Verifying integrity.")
             self.verify_modpack_integrity()
-            self.save_settings(modpack_downloaded=True)  # Mark as downloaded
 
         # Only now should Install button blink
         self.setup_button_blinking()
@@ -3087,9 +3218,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Ensure consistent use of the Modpacks folder
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
         os.makedirs(modpack_directory, exist_ok=True)  # Ensure the parent folder exists
 
         repo_name = f"{modpack_name}-{selected_branch}" if selected_branch != "main" else modpack_name
@@ -3153,7 +3284,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.progress_dialog.setStyleSheet(theme_styles.get(self.settings.get("theme"), theme_styles["Light"]))
 
         # Create a custom QLabel for the message with the modpack name
-        self.label = QLabel(f"Updating {modpack_name}({selected_branch})...\n")  # Show the name of the modpack
+        self.label = QLabel(f"Updating {modpack_name}({selected_branch})...")  # Show the name of the modpack
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center-align the text
         self.label.setStyleSheet("""
             QLabel {
@@ -3161,7 +3292,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             }
         """)
 
-        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n")
+        self.elapsed_time_label = QLabel("Elapsed time: 00:00\n\n")
         self.elapsed_time_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.elapsed_time_label.setStyleSheet("""
             QLabel {
@@ -3260,18 +3391,18 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         repo_name = f"{modpack_name}-{selected_branch}" if selected_branch != "main" else modpack_name
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
         repo_path = os.path.join(modpack_directory, repo_name)
         mods_src = os.path.join(repo_path, "Mods")
 
         # Determine the install path based on the platform
         if system_platform == "Darwin":  # macOS
-            install_path = os.path.abspath(os.path.expanduser(self.mods_dir))
+            install_path = os.path.expanduser(self.mods_dir)
         elif system_platform in ["Windows", "Linux"]:
-            install_path = os.path.abspath(os.path.expandvars(self.mods_dir))
+            install_path = os.path.expandvars(self.mods_dir)
 
         mod_list = self.get_mod_list(mods_src) if os.path.isdir(mods_src) else []
 
@@ -3365,9 +3496,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         genre_counts = {}
         tag_counts = {}
 
-        self.favorite_count = sum(1 for mod in self.current_mods if mod in self.favorite_mods)
-        self.selected_count = sum(1 for mod in self.current_mods if mod not in self.excluded_mods)
-        self.deselected_count = sum(1 for mod in self.current_mods if mod in self.excluded_mods)
+        self.favorite_count = 0
+        self.selected_count = -2
+        self.deselected_count = 0
 
         for mod in self.current_mods:
             if mod in self.metadata:
@@ -3808,9 +3939,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Check if the Custom Mods folder exists
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
         
         custom_mods_dir = os.path.join(modpack_directory, "Custom")
         
@@ -3863,7 +3994,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             return
 
         # Determine the Mods folder path
-        mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
+        mods_dir = os.path.expandvars(self.mods_dir)
         os.makedirs(mods_dir, exist_ok=True)  # Ensure Mods directory exists
 
         # Copy selected mods into the Mods directory
@@ -3878,9 +4009,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         for mod in selected_mods:
             if system_platform == "Darwin":  # macOS
-                modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+                modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
             elif system_platform in ["Windows", "Linux"]:
-                modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+                modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
             source_path = os.path.join(modpack_directory, "Custom", mod)
             dest_path = os.path.join(mods_dir, mod)
@@ -4108,9 +4239,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         repo_name = f"{modpack_name}-{selected_branch}" if selected_branch != "main" else modpack_name
 
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
 
         repo_path = os.path.join(modpack_directory, repo_name)
         mods_src = os.path.join(repo_path, 'Mods')
@@ -4118,9 +4249,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Check if the Mods directory exists and optionally back it up."""
         # Resolve platform-specific mods directory path
         if system_platform == "Darwin":  # macOS
-            mods_dir = os.path.abspath(os.path.expanduser(self.mods_dir))
+            mods_dir = os.path.expanduser(self.mods_dir)
         elif system_platform in ["Windows", "Linux"]:
-            mods_dir = os.path.abspath(os.path.expandvars(self.mods_dir))
+            mods_dir = os.path.expandvars(self.mods_dir)
 
         # Ensure source Mods directory exists
         if not os.path.isdir(mods_src):
@@ -4220,8 +4351,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             QMessageBox.information(self, "Install Status", "Successfully installed modpack.")
 
             # Mark modpack as installed
-            self.save_settings(modpack_installed=True)
             self.stop_blinking()
+            self.setup_button_blinking()
 
         except Exception as e:
             progress_dialog.close()
@@ -4231,9 +4362,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         finally:
             # Ensure mods_path is updated and debug folders are removed
             if system_platform == "Darwin":  # macOS
-                mods_path = os.path.abspath(os.path.expanduser(self.settings.get("mods_directory")))
+                mods_path = os.path.expanduser(self.settings.get("mods_directory"))
             elif system_platform in ["Windows", "Linux"]:
-                mods_path = os.path.abspath(os.path.expandvars(self.settings.get("mods_directory")))
+                mods_path = os.path.expandvars(self.settings.get("mods_directory"))
 
             remove_debug_folders(mods_path)
             self.update_installed_info()
@@ -4255,9 +4386,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         self.settings = self.load_settings()
         if system_platform == "Darwin":  # macOS
-            install_path = os.path.abspath(os.path.expanduser(self.mods_dir))
+            install_path = os.path.expanduser(self.mods_dir)
         elif system_platform in ["Windows", "Linux"]:
-            install_path = os.path.abspath(os.path.expandvars(self.mods_dir))
+            install_path = os.path.expandvars(self.mods_dir)
 
         # Confirm the uninstallation
         response = QMessageBox.question(
@@ -4320,9 +4451,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Ensure the folder is inside the 'Modpacks' directory
         
         if system_platform == "Darwin":  # macOS
-            modpack_directory = os.path.abspath(os.path.expanduser(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expanduser(self.settings.get("modpack_directory"))
         elif system_platform in ["Windows", "Linux"]:
-            modpack_directory = os.path.abspath(os.path.expandvars(self.settings.get("modpack_directory")))
+            modpack_directory = os.path.expandvars(self.settings.get("modpack_directory"))
         
         modpack_folder = os.path.join(modpack_directory, repo_name)
         mods_folder = os.path.join(modpack_folder, "Mods")
@@ -4389,9 +4520,13 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def read_file_content(self, file_path):
         """Helper function to read file content and handle IOErrors."""
+        if not os.path.exists(file_path):
+            logging.warning(f"[File] Missing file: {file_path}. Returning None.")
+            return None  # Return None instead of crashing
+        
         try:
-            with open(file_path, 'r') as file:
-                logging.info(f"[File] Successfully read content from {file_path}.")
+            with open(file_path, 'r', encoding='utf-8') as file:
+                logging.debug(f"[File] Successfully read content from {file_path}.")
                 return file.read().strip()
         except IOError as e:
             logging.error(f"[File] IOError reading {file_path}: {e}", exc_info=True)
@@ -4399,6 +4534,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def extract_pack_name(self, lua_file_path):
         """Helper to extract the pack name from ModpackUtil.lua."""
+        if not os.path.exists(lua_file_path):
+            logging.warning(f"[File] Missing file: {lua_file_path}. Returning None.")
+            return None
+        
         try:
             with open(lua_file_path, 'r') as file:
                 for line in file:
@@ -4441,7 +4580,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Expand and normalize the game directory path
         if system_platform == "Darwin":  # macOS
-            game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
+            game_dir = os.path.expanduser(self.settings.get("game_directory"))
             game_exe = "Balatro.app"
 
         elif system_platform == "Linux":
@@ -4455,11 +4594,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 game_exe = "Balatro.exe"
 
             else:
-                game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
+                game_dir = os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
                 game_exe = "Balatro.exe"
 
         elif system_platform == "Windows":
-            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
+            game_dir = os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
             game_exe = "balatro.exe"
             
         # Verify existence of the game executable
@@ -4642,7 +4781,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Uninstall LuaJIT2 and restore Balatro's default Lua runtime."""
         logging.info("[Lovely Injector] Uninstalling LuaJIT2.")
         
-        game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory")))
+        game_dir = os.path.expandvars(self.settings.get("game_directory"))
         lua_jit_path = os.path.join(game_dir, "lua51.dll")
         original_lua_path = os.path.join(game_dir, "lua51.dll.old")
 
@@ -4673,10 +4812,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # Expand and normalize the game directory path
         if system_platform == "Darwin":  # macOS
-            game_dir = os.path.abspath(os.path.expanduser(self.settings.get("game_directory")))
+            game_dir = os.path.expanduser(self.settings.get("game_directory"))
             lovely_path = os.path.join(game_dir, "liblovely.dylib")
         elif system_platform in ["Windows", "Linux"]:
-            game_dir = os.path.abspath(os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"])))
+            game_dir = os.path.expandvars(self.settings.get("game_directory", DEFAULT_SETTINGS["game_directory"]))
             lovely_path = os.path.join(game_dir, "version.dll")
 
         if not os.path.exists(lovely_path):
@@ -4728,15 +4867,14 @@ def center_window(window, width, height):
 
 if __name__ == "__main__":
 
+    logging.info("==== Modpack Manager Started ====")
+    logging.info(f"Logging to file: {log_filename}")
+    
     logging.basicConfig(
-        filename="modpack_manager.log",
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        filemode="a"
     )
-
-    logging.info("[Startup] Modpack Manager application is starting.")
 
     try:
         app = QApplication([])  # Initialize the QApplication
