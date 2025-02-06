@@ -15,9 +15,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/05"
+DATE = "2025/02/06"
 ITERATION = "30"
-VERSION = Version("1.10.6")
+VERSION = Version("1.11.0")
 
 system_platform = platform.system()
 

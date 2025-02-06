@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.11.0] - 2025-02-06
+### Added
+- implemented logging system (very WIP)
+- "Remove user_settings.json" Button
+
+### Fixed
+- Blinking malfunctional and starts multiple instances
+- Minor bug fixes, tweaks, code clean up, restructure, etc.
+
+---
+
 ## [1.10.6] - 2025-02-05
 ### Fixed
 - Fixed selection filter crash
