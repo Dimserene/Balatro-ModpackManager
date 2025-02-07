@@ -1,5 +1,5 @@
 import logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtGui import QColor, QPixmap, QGuiApplication
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
 from PyQt6.QtWidgets import QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
 import git
@@ -10,6 +10,11 @@ from urllib.parse import urlparse
 from logging.handlers import RotatingFileHandler
 import pandas as pd
 from io import BytesIO
+
+QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+    Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+)
+QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
 
 ############################################################
 # Detect OS and set default settings
