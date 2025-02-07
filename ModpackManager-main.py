@@ -2461,14 +2461,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Check if the game executable exists, otherwise prompt the user."""
         if system_platform == "Darwin":  # macOS
             game_exe = "Balatro.app"
+            game_path = os.path.join(os.path.expanduser(self.settings.get("game_directory", "")), game_exe)
 
         elif system_platform == "Linux":
             game_exe = "Balatro.exe"
+            game_path = os.path.join(os.path.expandvars(self.settings.get("game_directory", "")), game_exe)
 
         elif system_platform == "Windows":
             game_exe = "balatro.exe"
-
-        game_path = os.path.join(self.settings.get("game_directory", ""), game_exe)
+            game_path = os.path.join(os.path.expandvars(self.settings.get("game_directory", "")), game_exe)
 
         if not os.path.exists(game_path):
             QMessageBox.warning(None, "Game Not Found", "Game was not found in the default directory. Please select the correct game directory.")
