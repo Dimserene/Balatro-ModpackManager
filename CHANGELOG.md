@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.11.1] -2025-02-07
+### Fixed
+- Fixed game path not recognized by manager
+
+---
+
 ## [1.11.0] - 2025-02-06
 ### Added
 - implemented logging system (very WIP)
