@@ -2472,6 +2472,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         if not os.path.exists(game_path):
             QMessageBox.warning(None, "Game Not Found", "Game was not found in the default directory. Please select the correct game directory.")
+            logging.warning(f"[Settings] Game was not found in the default directory: {game_path}.")
 
             # Open file dialog to select the correct game folder
             game_dir = QFileDialog.getExistingDirectory(None, "Select Balatro Game Directory", "")
