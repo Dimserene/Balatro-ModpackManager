@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ---
+## [1.11.2] -2025-02-09
+### Fixed
+- Fixed Linux incorrect game path 
+
+---
 
 ## [1.11.1] -2025-02-07
 ### Fixed
