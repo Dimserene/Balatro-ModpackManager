@@ -14,9 +14,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/07"
+DATE = "2025/02/09"
 ITERATION = "30"
-VERSION = Version("1.11.1")
+VERSION = Version("1.11.2")
 
 system_platform = platform.system()
 
@@ -67,8 +67,8 @@ elif system_platform == "Linux":
 
     DEFAULT_SETTINGS.update({
         "game_directory": game_directory,
-        "mods_directory": f"{SETTINGS_FOLDER}/Mods",
-        "modpack_directory": f"{SETTINGS_FOLDER}/Modpacks",
+        "mods_directory": "/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/Mods",
+        "modpack_directory": "/home/$USER/.steam/steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro/Modpacks",
     })
 
 elif system_platform == "Darwin":
@@ -87,8 +87,8 @@ PRESETS_FILE = os.path.join(SETTINGS_FOLDER, "modpack_presets.json")
 CACHE_FILE = os.path.join(SETTINGS_FOLDER, "modpack_cache.json")
 CSV_CACHE_FILE = os.path.join(SETTINGS_FOLDER, "cached_data.csv")
 
-LOGO_URL = "https://raw.githubusercontent.com/Dimserene/Dimserenes-Modpack/refs/heads/main/NewFullPackLogo%20New%20Year.png"
-LOGO_PATH = os.path.join(ASSETS_FOLDER, "logoNewYear.png")  # File name to save the downloaded logo
+LOGO_URL = "https://raw.githubusercontent.com/Dimserene/Dimserenes-Modpack/refs/heads/main/NewFullPackLogo.png"
+LOGO_PATH = os.path.join(ASSETS_FOLDER, "logo.png")  # File name to save the downloaded logo
 
 CHECKBOX_URL = "https://github.com/Dimserene/Balatro-ModpackManager/raw/main/assets/assets.zip"
 INFORMATION_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
