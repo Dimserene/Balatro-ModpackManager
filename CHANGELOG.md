@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [1.11.3] - 2025-02-10
 ### Fixed
-- (Attempts to) Fix Mods folder incorrectly copied to '%AppData%/Balatro/Modpacks/Mods'
+- (Attempts to) Fix Mods folder copied to incorrect path
 
 ---
 
