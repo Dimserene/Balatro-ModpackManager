@@ -3,13 +3,20 @@
 All notable changes to this project will be documented in this file.
 
 ---
-## [1.11.2] -2025-02-09
+
+## [1.11.3] - 2025-02-10
+### Fixed
+- (Attempts to) Fix Mods folder incorrectly copied to '%AppData%/Balatro/Modpacks/Mods'
+
+---
+
+## [1.11.2] - 2025-02-09
 ### Fixed
 - Fixed Linux incorrect game path 
 
 ---
 
-## [1.11.1] -2025-02-07
+## [1.11.1] - 2025-02-07
 ### Fixed
 - Fixed game path not recognized by manager
 
