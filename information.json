@@ -13,7 +13,8 @@
     "ShellysDeckOfCards": ["JenLib"],
     "TheAutumnCircus": ["AutumnMoodMechanics"],
     "TatteredDecks": ["Galdur"],
-
+    "YART": ["Strange-Library"],
+    
     "Jestobiology": ["Fusion-Jokers"],
     "Tsunami": ["Fusion-Jokers"],
     "Vultbines_Joker": ["Fusion-Jokers"],
@@ -28,7 +29,7 @@
     "JoJokers": ["Talisman"],
     "MoreFluff": ["Talisman"],
     "Oiiman-s-Additions": ["Cryptid", "Talisman"],
-    "Strange-Pencil": ["Talisman"],
+    "Strange-Pencil": ["Talisman", "Strange-Library"],
     "TOGAPackBalatro": ["Talisman"],
     "Zone-Balatro": ["Talisman"],
 
