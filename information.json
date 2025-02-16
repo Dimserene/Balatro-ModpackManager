@@ -80,6 +80,11 @@
           "name": "Experimental-Pack",
           "url": "https://github.com/Dimserene/Experimental-Pack.git",
           "description": "Contains relatively new and experimental mods, for fresh new features and concepts."
+        },
+        {
+          "name": "Cosmetic-Addon",
+          "url": "https://github.com/Dimserene/Cosmetic-Addon.git",
+          "description": "Deckskins, Malverk, and Trance."
         }
       ]
     }
@@ -117,6 +122,8 @@
     "Tip: Game issues? Try updating Lovely Injector.",
     "Tip: Use search bar in mod selection to search mods!",
     "Tip: Click me to display more useful hints!",
+    "Tip: New 'Cosmetic Addon'!",
+    "Tip: Submit an issue in bug tracker if you have ideas!",
     "Tip: Modpacks are stored alonside Mods folder!",
     "Tip: Settings are stored alonside Mods folder!"
   ]
