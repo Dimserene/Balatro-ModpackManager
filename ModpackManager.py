@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import time
 import sys
-requests.get("https://github.com", verify=False)
+import webbrowser
 
 # Detect system platform
 system_platform = platform.system()
@@ -47,6 +47,34 @@ os.makedirs(SETTINGS_FOLDER, exist_ok=True)  # Create settings folder if missing
 
 # Configuration
 INFORMATION_JSON_URL = "https://raw.githubusercontent.com/Dimserene/ModpackManager/main/information.json"
+
+def check_git():
+    """Check if Git is installed and prompt the user to install it if missing."""
+    try:
+        subprocess.run(["git", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    except FileNotFoundError:
+        if system_platform == "Windows":
+            git_url = "https://gitforwindows.org/"
+        elif system_platform == "Linux":
+            git_url = "https://git-scm.com/download/linux"
+        elif system_platform == "Darwin":  # macOS
+            git_url = "https://git-scm.com/download/mac"
+
+        print("\nGit is required to run the Modpack Manager.")
+        user_response = input("Git is not installed. Would you like to install it now? (Y/N): ").strip().lower()
+
+        if user_response == "y":
+            webbrowser.open(git_url)
+            print("\nPlease install Git and reboot your PC before launching Modpack Manager.")
+            input("Press Enter to exit...")  # Allows user to see the message before exiting
+            sys.exit(0)
+        else:
+            print("\nGit is not installed. Aborting Modpack Manager launch.")
+            input("Press Enter to exit...")  # Ensures user sees the message before exit
+            sys.exit(0)
+
+# Call this function before performing Git operations
+check_git()
 
 def fetch_latest_version():
     """Fetch the latest version and direct download URL based on OS."""
