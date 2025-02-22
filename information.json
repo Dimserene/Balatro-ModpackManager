@@ -85,6 +85,11 @@
           "name": "Cosmetic-Addon",
           "url": "https://github.com/Dimserene/Cosmetic-Addon.git",
           "description": "Deckskins, Malverk, and Trance."
+        },
+        {
+          "name": "OT5Modpack",
+          "url": "https://github.com/Dimserene/OT5Modpack",
+          "description": ""
         }
       ]
     }
