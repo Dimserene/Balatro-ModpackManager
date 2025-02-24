@@ -1,5 +1,5 @@
 {
-  "latest_version": "1.11.3",
+  "latest_version": "1.11.4",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
   "dependencies": {
     "AutumnMoodMechanics": ["TheAutumnCircus"],
@@ -130,6 +130,8 @@
     "Tip: New 'Cosmetic Addon'!",
     "Tip: Submit an issue in bug tracker if you have ideas!",
     "Tip: Modpacks are stored alonside Mods folder!",
+    "Tip: Modpacks are stored in 'Modpacks' folder!",
+    "Tip: Reclone if quick update doesn't work correctly!",
     "Tip: Settings are stored alonside Mods folder!"
   ]
 }

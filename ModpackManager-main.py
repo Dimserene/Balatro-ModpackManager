@@ -1,7 +1,7 @@
-import logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
-from PyQt6.QtGui import QColor, QPixmap
+import psutil, logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
+from PyQt6.QtGui import QColor, QPixmap, QCursor, QFont
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QGraphicsOpacityEffect, QSizeGrip, QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
 import git
 from git import Repo, GitCommandError
 from datetime import datetime
@@ -14,9 +14,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/10"
+DATE = "2025/02/24"
 ITERATION = "30"
-VERSION = Version("1.11.3")
+VERSION = Version("1.11.4")
 
 system_platform = platform.system()
 
@@ -35,6 +35,10 @@ DEFAULT_SETTINGS = {
     "remove_mods": True,
     "skip_mod_selection": False,
     "auto_install": False,
+    "show_floating_play_button": False,
+    "floating_play_x": 100,  # Default position (X)
+    "floating_play_y": 100,   # Default position (Y)
+    "floating_play_size": (32, 32),  # Default size (width, height)
     "git_http_version": "HTTP/2",
     "http_post_buffer": 1,          # Default: 1MB
     "http_max_request_buffer": 1,   # Default: 1MB
@@ -320,7 +324,7 @@ def is_online(test_url="https://www.google.com", parent=None):
         return False
 
 ############################################################
-# Worker class for downloading/updating modpack in the background
+# Worker classes
 ############################################################
 
 def fetch_modpack_data(url):
@@ -519,7 +523,7 @@ class ModpackDownloadWorker(QThread):
 
             if self.clone_url.endswith('.git'):
                 # Clone the repository using the selected branch
-                git_command = ["git", "clone", "--branch", self.branch_name, "--recurse-submodules", "--remote-submodules", self.clone_url, self.repo_name]
+                git_command = ["git", "clone", "--branch", self.branch_name, "--recurse-submodules", self.clone_url, self.repo_name]
                 logging.info(f"[Modpack Download] Running Git clone command: {' '.join(git_command)}")
 
                 self.process = QProcess()
@@ -641,7 +645,7 @@ def update_submodules(repo):
         repo.git.submodule('init')  # Initialize new submodules
 
         logging.debug("Updating submodules recursively...")
-        repo.git.submodule('update', '--recursive', '--remote')  # Update submodules
+        repo.git.submodule('update', '--recursive')  # Update submodules
 
         submodules_path = os.path.join(repo.working_tree_dir, '.gitmodules')
         if not os.path.exists(submodules_path):
@@ -663,7 +667,7 @@ def update_submodules(repo):
 
         logging.debug("Re-initializing submodules...")
         repo.git.submodule('init')
-        repo.git.submodule('update', '--recursive', '--remote')
+        repo.git.submodule('update', '--recursive')
 
         logging.info("Submodules updated successfully.")
     except GitCommandError as e:
@@ -761,6 +765,134 @@ class ModpackUpdateWorker(QThread):
         repo.git.submodule('update', '--init', '--recursive')
         self.progress.emit("Submodules updated.")
         logging.info("[Update] Submodules successfully updated.")
+
+# class FloatingPlayButton(QWidget):
+    def __init__(self, main_window):
+        super().__init__()
+
+        self.main_window = main_window
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedSize(32, 32)  # Icon size
+
+        # Load play button image
+        self.play_icon_path = os.path.join(ASSETS_FOLDER, "floating_play.png")
+
+        # Play button
+        self.play_label = QLabel(self)
+        self.play_label.setPixmap(QPixmap(self.play_icon_path).scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
+        self.play_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.play_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        # Close button
+        self.close_button = QPushButton("x", self)
+        self.close_button.setFixedSize(20, 20)
+        self.close_button.setStyleSheet("background: rgba(0, 0, 0, 120); color: white; border-radius: 10px; font-size: 10px;")
+        self.close_button.hide()
+        self.close_button.clicked.connect(self.close_button_clicked)
+
+        # Layout
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.play_label)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        # Opacity effect for hover effect
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(1.0)  # Full opacity by default
+
+        # Timer for hover detection
+        self.hover_timer = QTimer(self)
+        self.hover_timer.setSingleShot(True)
+        self.hover_timer.timeout.connect(self.show_close_button)
+
+        # Load last position
+        self.load_position_and_size()
+
+        # Initialize drag variables
+        self.drag_start_position = None
+        self.is_dragging = False
+
+    def mousePressEvent(self, event):
+        """Start moving window on mouse press."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = event.globalPosition().toPoint()
+            self.is_dragging = False  # Assume it's not dragging yet
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        """Move the floating window when dragged."""
+        if event.buttons() == Qt.MouseButton.LeftButton and self.drag_start_position is not None:
+            delta = event.globalPosition().toPoint() - self.drag_start_position
+
+            if delta.manhattanLength() > 5:  # Threshold to detect dragging
+                self.is_dragging = True  # Mark it as a drag
+                self.move(self.x() + delta.x(), self.y() + delta.y())
+                self.drag_start_position = event.globalPosition().toPoint()
+                event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """If the mouse was not dragged, treat as a click."""
+        if not self.is_dragging:
+            self.launch_game(event)  # Trigger game launch
+        self.save_position_and_size()
+        self.drag_start_position = None
+        self.is_dragging = False
+        event.accept()
+
+    def enterEvent(self, event):
+        """Start timer to show close button on hover."""
+        self.hover_timer.start(3000)  # 3 seconds delay
+        self.on_hover()  # Apply hover effect
+
+    def leaveEvent(self, event):
+        """Hide close button when mouse leaves."""
+        self.hover_timer.stop()
+        self.close_button.hide()
+        self.on_leave()  # Remove hover effect
+
+    def on_hover(self, event=None):
+        """Darken the play button and show overlay play icon."""
+        self.opacity_effect.setOpacity(0.9)  # Reduce opacity
+
+    def on_leave(self, event=None):
+        """Restore normal play button image."""
+        self.opacity_effect.setOpacity(1.0)  # Restore opacity
+
+    def show_close_button(self):
+        """Show close button after 3 seconds hover."""
+        self.close_button.move(self.width() - 24, 4)  # Position inside the play button
+        self.close_button.show()
+
+    def close_button_clicked(self):
+        """Hide floating button."""
+        self.close()
+
+    def save_position_and_size(self):
+        """Save the last position and size of the floating button."""
+        self.main_window.settings["floating_play_x"] = self.x()
+        self.main_window.settings["floating_play_y"] = self.y()
+        self.main_window.settings["floating_play_size"] = (self.width(), self.height())
+        self.main_window.save_settings()
+
+    def load_position_and_size(self):
+        """Load the last saved position and size."""
+        x = self.main_window.settings.get("floating_play_x", 100)
+        y = self.main_window.settings.get("floating_play_y", 100)
+        width, height = self.main_window.settings.get("floating_play_size", (32, 32))
+        self.move(x, y)
+        self.resize(width, height)
+
+    def launch_game(self, event):
+        logging.info("[Floating Button] Launching game via play_game()")
+        self.main_window.play_game()
+
+    def closeEvent(self, event):
+        """Ensure the floating button closes when the Mod Manager is closed."""
+        logging.info("[Floating Button] Closing with Mod Manager.")
+        self.close()
+        event.accept()
 
 ############################################################
 # Tutorial class
@@ -987,6 +1119,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint)
         self.setMinimumSize(self.sizeHint())  # Ensures a minimum size based on current content
+
+        # if self.settings.get("show_floating_play_button", False):
+        #     self.floating_play_button = FloatingPlayButton(self)
+        #     self.floating_play_button.show()
 
         logging.info("[Startup] Modpack Manager initialized successfully.")
     
@@ -1659,6 +1795,21 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         logging.info(f"[Links] Opening external link: {url}")
         webbrowser.open(url)
 
+    # def toggle_floating_play_button(self):
+    #     """Enable or disable floating play button."""
+    #     show_button = self.floating_play_checkbox.isChecked()
+    #     self.settings["show_floating_play_button"] = show_button
+    #     self.save_settings()
+
+    #     if show_button:
+    #         if not hasattr(self, "floating_play_button"):
+    #             self.floating_play_button = FloatingPlayButton(self)
+    #         self.floating_play_button.show()
+    #     else:
+    #         if hasattr(self, "floating_play_button"):
+    #             self.floating_play_button.close()
+    #             del self.floating_play_button
+
 ############################################################
 # Foundation of tutorial
 ############################################################
@@ -1773,6 +1924,11 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         # List all .exe files in the game directory and strip ".exe"
         exe_files = self.get_exe_files(default_game_dir)
+
+        # self.floating_play_checkbox = QCheckBox("Show Floating Play Button", parent)
+        # self.floating_play_checkbox.setChecked(self.settings.get("show_floating_play_button", False))
+        # self.floating_play_checkbox.stateChanged.connect(self.toggle_floating_play_button)
+        # layout.addWidget(self.floating_play_checkbox)
 
         # Game Directory
         game_dir_label = QLabel("Game Directory:")
@@ -3366,12 +3522,22 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.verify_modpack_integrity()
             self.blink_button(self.install_button)
 
-        self.load_settings()  # Reload the settings after the update
+            # Check the setting and install modpack if needed
+            if self.settings.get("auto_install", False):
+                logging.info("[Update] Auto-install enabled. Installing modpack.")
+                self.install_modpack()
 
-        # Check the setting and install modpack if needed
-        if success and self.settings.get("auto_install", False):
-            logging.info("[Update] Auto-install enabled. Installing modpack.")
-            self.install_modpack()
+        else:
+            logging.warning("[Update] Update failed. Attempting full redownload.")
+            user_response = QMessageBox.question(
+                self, "Update Failed",
+                "Quick update failed. Do you want to redownload the modpack?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if user_response == QMessageBox.StandardButton.Yes:
+                self.download_modpack(main_window=self)
+
+        self.load_settings()  # Reload the settings after the update
 
     def install_modpack(self):
         """Install the selected modpack with platform auto-detection for paths."""
@@ -4846,7 +5012,7 @@ def readonly_handler(func, path, _):
     try:
         os.chmod(path, stat.S_IWRITE)
         func(path)
-        logging.info(f"[File] Removed read-only attribute: {path}")
+        logging.debug(f"[File] Removed read-only attribute: {path}")
     except Exception as e:
         logging.error(f"[File] Failed to remove read-only attribute: {path}, Error: {e}", exc_info=True)
 

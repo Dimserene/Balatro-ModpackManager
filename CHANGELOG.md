@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.11.4] - 2025-02-24
+### Changed
+- Now quick updates fails will prompt user to redownload the modpack
+
+---
+
 ## [1.11.3] - 2025-02-10
 ### Fixed
 - (Attempts to) Fix Mods folder copied to incorrect path
