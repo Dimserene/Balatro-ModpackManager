@@ -14,9 +14,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/24"
+DATE = "2025/02/25"
 ITERATION = "30"
-VERSION = Version("1.11.4")
+VERSION = Version("1.11.5")
 
 system_platform = platform.system()
 
@@ -767,132 +767,132 @@ class ModpackUpdateWorker(QThread):
         logging.info("[Update] Submodules successfully updated.")
 
 # class FloatingPlayButton(QWidget):
-    def __init__(self, main_window):
-        super().__init__()
+#     def __init__(self, main_window):
+#         super().__init__()
 
-        self.main_window = main_window
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(32, 32)  # Icon size
+#         self.main_window = main_window
+#         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+#         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+#         self.setFixedSize(32, 32)  # Icon size
 
-        # Load play button image
-        self.play_icon_path = os.path.join(ASSETS_FOLDER, "floating_play.png")
+#         # Load play button image
+#         self.play_icon_path = os.path.join(ASSETS_FOLDER, "floating_play.png")
 
-        # Play button
-        self.play_label = QLabel(self)
-        self.play_label.setPixmap(QPixmap(self.play_icon_path).scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
-        self.play_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.play_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+#         # Play button
+#         self.play_label = QLabel(self)
+#         self.play_label.setPixmap(QPixmap(self.play_icon_path).scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
+#         self.play_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+#         self.play_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        # Close button
-        self.close_button = QPushButton("x", self)
-        self.close_button.setFixedSize(20, 20)
-        self.close_button.setStyleSheet("background: rgba(0, 0, 0, 120); color: white; border-radius: 10px; font-size: 10px;")
-        self.close_button.hide()
-        self.close_button.clicked.connect(self.close_button_clicked)
+#         # Close button
+#         self.close_button = QPushButton("x", self)
+#         self.close_button.setFixedSize(20, 20)
+#         self.close_button.setStyleSheet("background: rgba(0, 0, 0, 120); color: white; border-radius: 10px; font-size: 10px;")
+#         self.close_button.hide()
+#         self.close_button.clicked.connect(self.close_button_clicked)
 
-        # Layout
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.play_label)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
+#         # Layout
+#         layout = QVBoxLayout(self)
+#         layout.addWidget(self.play_label)
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         self.setLayout(layout)
 
-        # Opacity effect for hover effect
-        self.opacity_effect = QGraphicsOpacityEffect(self)
-        self.setGraphicsEffect(self.opacity_effect)
-        self.opacity_effect.setOpacity(1.0)  # Full opacity by default
+#         # Opacity effect for hover effect
+#         self.opacity_effect = QGraphicsOpacityEffect(self)
+#         self.setGraphicsEffect(self.opacity_effect)
+#         self.opacity_effect.setOpacity(1.0)  # Full opacity by default
 
-        # Timer for hover detection
-        self.hover_timer = QTimer(self)
-        self.hover_timer.setSingleShot(True)
-        self.hover_timer.timeout.connect(self.show_close_button)
+#         # Timer for hover detection
+#         self.hover_timer = QTimer(self)
+#         self.hover_timer.setSingleShot(True)
+#         self.hover_timer.timeout.connect(self.show_close_button)
 
-        # Load last position
-        self.load_position_and_size()
+#         # Load last position
+#         self.load_position_and_size()
 
-        # Initialize drag variables
-        self.drag_start_position = None
-        self.is_dragging = False
+#         # Initialize drag variables
+#         self.drag_start_position = None
+#         self.is_dragging = False
 
-    def mousePressEvent(self, event):
-        """Start moving window on mouse press."""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_position = event.globalPosition().toPoint()
-            self.is_dragging = False  # Assume it's not dragging yet
-            event.accept()
+#     def mousePressEvent(self, event):
+#         """Start moving window on mouse press."""
+#         if event.button() == Qt.MouseButton.LeftButton:
+#             self.drag_position = event.globalPosition().toPoint()
+#             self.is_dragging = False  # Assume it's not dragging yet
+#             event.accept()
 
-    def mouseMoveEvent(self, event):
-        """Move the floating window when dragged."""
-        if event.buttons() == Qt.MouseButton.LeftButton and self.drag_start_position is not None:
-            delta = event.globalPosition().toPoint() - self.drag_start_position
+#     def mouseMoveEvent(self, event):
+#         """Move the floating window when dragged."""
+#         if event.buttons() == Qt.MouseButton.LeftButton and self.drag_start_position is not None:
+#             delta = event.globalPosition().toPoint() - self.drag_start_position
 
-            if delta.manhattanLength() > 5:  # Threshold to detect dragging
-                self.is_dragging = True  # Mark it as a drag
-                self.move(self.x() + delta.x(), self.y() + delta.y())
-                self.drag_start_position = event.globalPosition().toPoint()
-                event.accept()
+#             if delta.manhattanLength() > 5:  # Threshold to detect dragging
+#                 self.is_dragging = True  # Mark it as a drag
+#                 self.move(self.x() + delta.x(), self.y() + delta.y())
+#                 self.drag_start_position = event.globalPosition().toPoint()
+#                 event.accept()
 
-    def mouseReleaseEvent(self, event):
-        """If the mouse was not dragged, treat as a click."""
-        if not self.is_dragging:
-            self.launch_game(event)  # Trigger game launch
-        self.save_position_and_size()
-        self.drag_start_position = None
-        self.is_dragging = False
-        event.accept()
+#     def mouseReleaseEvent(self, event):
+#         """If the mouse was not dragged, treat as a click."""
+#         if not self.is_dragging:
+#             self.launch_game(event)  # Trigger game launch
+#         self.save_position_and_size()
+#         self.drag_start_position = None
+#         self.is_dragging = False
+#         event.accept()
 
-    def enterEvent(self, event):
-        """Start timer to show close button on hover."""
-        self.hover_timer.start(3000)  # 3 seconds delay
-        self.on_hover()  # Apply hover effect
+#     def enterEvent(self, event):
+#         """Start timer to show close button on hover."""
+#         self.hover_timer.start(3000)  # 3 seconds delay
+#         self.on_hover()  # Apply hover effect
 
-    def leaveEvent(self, event):
-        """Hide close button when mouse leaves."""
-        self.hover_timer.stop()
-        self.close_button.hide()
-        self.on_leave()  # Remove hover effect
+#     def leaveEvent(self, event):
+#         """Hide close button when mouse leaves."""
+#         self.hover_timer.stop()
+#         self.close_button.hide()
+#         self.on_leave()  # Remove hover effect
 
-    def on_hover(self, event=None):
-        """Darken the play button and show overlay play icon."""
-        self.opacity_effect.setOpacity(0.9)  # Reduce opacity
+#     def on_hover(self, event=None):
+#         """Darken the play button and show overlay play icon."""
+#         self.opacity_effect.setOpacity(0.9)  # Reduce opacity
 
-    def on_leave(self, event=None):
-        """Restore normal play button image."""
-        self.opacity_effect.setOpacity(1.0)  # Restore opacity
+#     def on_leave(self, event=None):
+#         """Restore normal play button image."""
+#         self.opacity_effect.setOpacity(1.0)  # Restore opacity
 
-    def show_close_button(self):
-        """Show close button after 3 seconds hover."""
-        self.close_button.move(self.width() - 24, 4)  # Position inside the play button
-        self.close_button.show()
+#     def show_close_button(self):
+#         """Show close button after 3 seconds hover."""
+#         self.close_button.move(self.width() - 24, 4)  # Position inside the play button
+#         self.close_button.show()
 
-    def close_button_clicked(self):
-        """Hide floating button."""
-        self.close()
+#     def close_button_clicked(self):
+#         """Hide floating button."""
+#         self.close()
 
-    def save_position_and_size(self):
-        """Save the last position and size of the floating button."""
-        self.main_window.settings["floating_play_x"] = self.x()
-        self.main_window.settings["floating_play_y"] = self.y()
-        self.main_window.settings["floating_play_size"] = (self.width(), self.height())
-        self.main_window.save_settings()
+#     def save_position_and_size(self):
+#         """Save the last position and size of the floating button."""
+#         self.main_window.settings["floating_play_x"] = self.x()
+#         self.main_window.settings["floating_play_y"] = self.y()
+#         self.main_window.settings["floating_play_size"] = (self.width(), self.height())
+#         self.main_window.save_settings()
 
-    def load_position_and_size(self):
-        """Load the last saved position and size."""
-        x = self.main_window.settings.get("floating_play_x", 100)
-        y = self.main_window.settings.get("floating_play_y", 100)
-        width, height = self.main_window.settings.get("floating_play_size", (32, 32))
-        self.move(x, y)
-        self.resize(width, height)
+#     def load_position_and_size(self):
+#         """Load the last saved position and size."""
+#         x = self.main_window.settings.get("floating_play_x", 100)
+#         y = self.main_window.settings.get("floating_play_y", 100)
+#         width, height = self.main_window.settings.get("floating_play_size", (32, 32))
+#         self.move(x, y)
+#         self.resize(width, height)
 
-    def launch_game(self, event):
-        logging.info("[Floating Button] Launching game via play_game()")
-        self.main_window.play_game()
+#     def launch_game(self, event):
+#         logging.info("[Floating Button] Launching game via play_game()")
+#         self.main_window.play_game()
 
-    def closeEvent(self, event):
-        """Ensure the floating button closes when the Mod Manager is closed."""
-        logging.info("[Floating Button] Closing with Mod Manager.")
-        self.close()
-        event.accept()
+#     def closeEvent(self, event):
+#         """Ensure the floating button closes when the Mod Manager is closed."""
+#         logging.info("[Floating Button] Closing with Mod Manager.")
+#         self.close()
+#         event.accept()
 
 ############################################################
 # Tutorial class
@@ -3484,6 +3484,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.timer.start(1000)  # Update every second
 
         # Create the worker for updating the modpack
+        print(ModpackUpdateWorker.__init__.__code__.co_varnames)
         self.worker = ModpackUpdateWorker(repo_url, repo_name, selected_branch, modpack_directory)
         self.worker.finished.connect(self.on_update_finished)
 
