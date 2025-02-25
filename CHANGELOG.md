@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ## [1.11.5] - 2025-02-25
 ### Fixed
-- Fixed quick update instant crashed
+- Fixed quick update instant crashed when used
 
 ---
 
