@@ -14,9 +14,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/25"
+DATE = "2025/02/27"
 ITERATION = "30"
-VERSION = Version("1.11.5")
+VERSION = Version("1.11.6")
 
 system_platform = platform.system()
 
@@ -4604,17 +4604,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Verify the integrity of the selected modpack."""
         logging.info("[Verification] Starting modpack integrity check.")
 
-        modpack_name = self.modpack_var.currentText()  # Get the name of the selected modpack
+        self.settings = self.load_settings()
+        modpack_name = self.modpack_var.currentText()
+        selected_branch = self.branch_var.currentText()
 
-        # Handle special case for Coonie's Modpack
-        if modpack_name == "Coonie's Modpack":
-            repo_name = "Coonies-Modpack"
-        else:
-            clone_url = self.get_modpack_url(modpack_name)
-            if not clone_url:
-                QMessageBox.critical(self, "Error", f"URL not found for modpack '{modpack_name}'.")
-                return
-            repo_name = clone_url.split('/')[-1].replace('.git', '')
+        # Handle repository name and path
+        repo_name = f"{modpack_name}-{selected_branch}" if selected_branch != "main" else modpack_name
 
         # Ensure the folder is inside the 'Modpacks' directory
         

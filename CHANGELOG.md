@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 ---
 
+## [1.11.6] - 2025-02-27
+### Fixed
+- Fixed verify_modpack_integrity function
+
+---
+
 ## [1.11.5] - 2025-02-25
 ### Fixed
 - Fixed quick update instant crashed when used

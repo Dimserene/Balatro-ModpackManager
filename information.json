@@ -1,5 +1,5 @@
 {
-  "latest_version": "1.11.5",
+  "latest_version": "1.11.6",
   "download_url": "https://github.com/Dimserene/ModpackManager/releases/",
   "dependencies": {
     "AutumnMoodMechanics": ["TheAutumnCircus"],
@@ -11,6 +11,7 @@
     "Lock-The-Deal": ["LnxFCA-Shared"],
     "ModpackDecks": ["SDM_0-s-Stuff"],
     "ShellysDeckOfCards": ["JenLib"],
+    "Strange-Pencil": ["Strange-Library"],
     "TheAutumnCircus": ["AutumnMoodMechanics"],
     "TatteredDecks": ["Galdur"],
     "YART": ["Strange-Library"],
@@ -29,7 +30,7 @@
     "JoJokers": ["Talisman"],
     "MoreFluff": ["Talisman"],
     "Oiiman-s-Additions": ["Cryptid", "Talisman"],
-    "Strange-Pencil": ["Strange-Library"],
+    "PMCSBalatro": ["Talisman"],
     "TOGAPackBalatro": ["Talisman"],
     "Zone-Balatro": ["Talisman"],
 
