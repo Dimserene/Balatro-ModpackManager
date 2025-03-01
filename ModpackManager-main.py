@@ -1,7 +1,7 @@
-import psutil, logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
-from PyQt6.QtGui import QColor, QPixmap, QCursor, QFont
+import logging, sys, tarfile, io, subprocess, math, os, random, re, shutil, requests, webbrowser, zipfile, stat, json, logging, time, platform
+from PyQt6.QtGui import QColor, QPixmap, QCursor, QMouseEvent
 from PyQt6.QtCore import Qt, QTimer, QProcess, QThread, pyqtSignal, QPoint
-from PyQt6.QtWidgets import QGraphicsOpacityEffect, QSizeGrip, QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QGraphicsOpacityEffect, QSlider, QSizePolicy, QStackedWidget, QListWidget, QSplashScreen, QInputDialog, QMenu, QSplitter, QListWidgetItem, QScrollArea, QProgressDialog, QHBoxLayout, QFileDialog, QMessageBox, QApplication, QCheckBox, QLineEdit, QDialog, QLabel, QPushButton, QComboBox, QGridLayout, QWidget, QVBoxLayout
 import git
 from git import Repo, GitCommandError
 from datetime import datetime
@@ -766,133 +766,140 @@ class ModpackUpdateWorker(QThread):
         self.progress.emit("Submodules updated.")
         logging.info("[Update] Submodules successfully updated.")
 
-# class FloatingPlayButton(QWidget):
-#     def __init__(self, main_window):
-#         super().__init__()
+class FloatingPlayButton(QWidget):
+    def __init__(self, main_window):
+        super().__init__()
 
-#         self.main_window = main_window
-#         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-#         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-#         self.setFixedSize(32, 32)  # Icon size
+        self.main_window = main_window
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+        self.setFixedSize(40, 40)  # Slightly larger for better visibility
 
-#         # Load play button image
-#         self.play_icon_path = os.path.join(ASSETS_FOLDER, "floating_play.png")
+        # Load play button image
+        self.play_icon_path = os.path.join(ASSETS_FOLDER, "floating_play.png")
 
-#         # Play button
-#         self.play_label = QLabel(self)
-#         self.play_label.setPixmap(QPixmap(self.play_icon_path).scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
-#         self.play_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-#         self.play_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        # Play button
+        self.play_label = QLabel(self)
+        self.play_label.setPixmap(QPixmap(self.play_icon_path).scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio))
+        self.play_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.play_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-#         # Close button
-#         self.close_button = QPushButton("x", self)
-#         self.close_button.setFixedSize(20, 20)
-#         self.close_button.setStyleSheet("background: rgba(0, 0, 0, 120); color: white; border-radius: 10px; font-size: 10px;")
-#         self.close_button.hide()
-#         self.close_button.clicked.connect(self.close_button_clicked)
+        # Close button
+        self.close_button = QPushButton("x", self)
+        self.close_button.setFixedSize(16, 16)
+        self.close_button.setStyleSheet("""
+            QPushButton {
+                background: rgba(0, 0, 0, 150);
+                color: white;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background: rgba(255, 0, 0, 200);
+            }
+        """)
+        self.close_button.hide()
+        self.close_button.clicked.connect(self.close_button_clicked)
 
-#         # Layout
-#         layout = QVBoxLayout(self)
-#         layout.addWidget(self.play_label)
-#         layout.setContentsMargins(0, 0, 0, 0)
-#         self.setLayout(layout)
+        # Layout
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.play_label)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
 
-#         # Opacity effect for hover effect
-#         self.opacity_effect = QGraphicsOpacityEffect(self)
-#         self.setGraphicsEffect(self.opacity_effect)
-#         self.opacity_effect.setOpacity(1.0)  # Full opacity by default
+        # Opacity effect for hover effect
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(1.0)  # Full opacity by default
 
-#         # Timer for hover detection
-#         self.hover_timer = QTimer(self)
-#         self.hover_timer.setSingleShot(True)
-#         self.hover_timer.timeout.connect(self.show_close_button)
+        # Load last position
+        self.load_position()
 
-#         # Load last position
-#         self.load_position_and_size()
+        # Initialize drag variables
+        self.drag_start_position = None
+        self.is_dragging = False
 
-#         # Initialize drag variables
-#         self.drag_start_position = None
-#         self.is_dragging = False
+    def mousePressEvent(self, event: QMouseEvent):
+        """Start moving window on mouse press."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_start_position = event.globalPosition().toPoint()
+            self.is_dragging = False
+            event.accept()
 
-#     def mousePressEvent(self, event):
-#         """Start moving window on mouse press."""
-#         if event.button() == Qt.MouseButton.LeftButton:
-#             self.drag_position = event.globalPosition().toPoint()
-#             self.is_dragging = False  # Assume it's not dragging yet
-#             event.accept()
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Move the floating window when dragged."""
+        if event.buttons() == Qt.MouseButton.LeftButton and self.drag_start_position is not None:
+            delta = event.globalPosition().toPoint() - self.drag_start_position
+            if delta.manhattanLength() > 5:
+                self.is_dragging = True
+                self.move(self.x() + delta.x(), self.y() + delta.y())
+                self.drag_start_position = event.globalPosition().toPoint()
+                event.accept()
 
-#     def mouseMoveEvent(self, event):
-#         """Move the floating window when dragged."""
-#         if event.buttons() == Qt.MouseButton.LeftButton and self.drag_start_position is not None:
-#             delta = event.globalPosition().toPoint() - self.drag_start_position
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """If the mouse was not dragged, treat as a click."""
+        if not self.is_dragging:
+            self.launch_game()
+        self.save_position()
+        self.is_dragging = False
+        event.accept()
 
-#             if delta.manhattanLength() > 5:  # Threshold to detect dragging
-#                 self.is_dragging = True  # Mark it as a drag
-#                 self.move(self.x() + delta.x(), self.y() + delta.y())
-#                 self.drag_start_position = event.globalPosition().toPoint()
-#                 event.accept()
+    def enterEvent(self, event):
+        """Show close button and apply hover effect instantly."""
+        self.show_close_button()
+        self.on_hover()
 
-#     def mouseReleaseEvent(self, event):
-#         """If the mouse was not dragged, treat as a click."""
-#         if not self.is_dragging:
-#             self.launch_game(event)  # Trigger game launch
-#         self.save_position_and_size()
-#         self.drag_start_position = None
-#         self.is_dragging = False
-#         event.accept()
+    def leaveEvent(self, event):
+        """Hide close button when mouse leaves."""
+        self.close_button.hide()
+        self.on_leave()
 
-#     def enterEvent(self, event):
-#         """Start timer to show close button on hover."""
-#         self.hover_timer.start(3000)  # 3 seconds delay
-#         self.on_hover()  # Apply hover effect
+    def on_hover(self):
+        """Reduce opacity when hovered."""
+        self.opacity_effect.setOpacity(0.9)
 
-#     def leaveEvent(self, event):
-#         """Hide close button when mouse leaves."""
-#         self.hover_timer.stop()
-#         self.close_button.hide()
-#         self.on_leave()  # Remove hover effect
+    def on_leave(self):
+        """Restore opacity when mouse leaves."""
+        self.opacity_effect.setOpacity(1.0)
 
-#     def on_hover(self, event=None):
-#         """Darken the play button and show overlay play icon."""
-#         self.opacity_effect.setOpacity(0.9)  # Reduce opacity
+    def show_close_button(self):
+        """Show close button inside play icon (top-right corner)."""
+        self.close_button.setParent(self)
+        self.close_button.move(self.width() - 18, 2)  # Position inside top-right
+        self.close_button.show()
 
-#     def on_leave(self, event=None):
-#         """Restore normal play button image."""
-#         self.opacity_effect.setOpacity(1.0)  # Restore opacity
+    def close_button_clicked(self):
+        """Hide floating button."""
+        self.close()
 
-#     def show_close_button(self):
-#         """Show close button after 3 seconds hover."""
-#         self.close_button.move(self.width() - 24, 4)  # Position inside the play button
-#         self.close_button.show()
+    def save_position(self):
+        """Save the last position of the floating button."""
+        self.main_window.settings["floating_play_x"] = self.x()
+        self.main_window.settings["floating_play_y"] = self.y()
+        self.main_window.save_settings()
 
-#     def close_button_clicked(self):
-#         """Hide floating button."""
-#         self.close()
+    def load_position(self):
+        """Load the last saved position of the floating button."""
+        x = self.main_window.settings.get("floating_play_x", 100)
+        y = self.main_window.settings.get("floating_play_y", 100)
+        self.move(x, y)
 
-#     def save_position_and_size(self):
-#         """Save the last position and size of the floating button."""
-#         self.main_window.settings["floating_play_x"] = self.x()
-#         self.main_window.settings["floating_play_y"] = self.y()
-#         self.main_window.settings["floating_play_size"] = (self.width(), self.height())
-#         self.main_window.save_settings()
+    def launch_game(self):
+        """Trigger game launch."""
+        logging.info("[Floating Button] Launching game via play_game()")
+        self.main_window.play_game()
 
-#     def load_position_and_size(self):
-#         """Load the last saved position and size."""
-#         x = self.main_window.settings.get("floating_play_x", 100)
-#         y = self.main_window.settings.get("floating_play_y", 100)
-#         width, height = self.main_window.settings.get("floating_play_size", (32, 32))
-#         self.move(x, y)
-#         self.resize(width, height)
-
-#     def launch_game(self, event):
-#         logging.info("[Floating Button] Launching game via play_game()")
-#         self.main_window.play_game()
-
-#     def closeEvent(self, event):
-#         """Ensure the floating button closes when the Mod Manager is closed."""
-#         logging.info("[Floating Button] Closing with Mod Manager.")
-#         self.close()
-#         event.accept()
+    def closeEvent(self, event):
+        """Ensure the floating button closes when the Mod Manager is closed."""
+        logging.info("[Floating Button] Closing with Mod Manager.")
+        self.save_position()
+        self.main_window.settings["floating_play_visible"] = False  # Save visibility state
+        self.main_window.save_settings()
+        event.accept()
 
 ############################################################
 # Tutorial class
@@ -1120,9 +1127,9 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint)
         self.setMinimumSize(self.sizeHint())  # Ensures a minimum size based on current content
 
-        # if self.settings.get("show_floating_play_button", False):
-        #     self.floating_play_button = FloatingPlayButton(self)
-        #     self.floating_play_button.show()
+        if self.settings.get("show_floating_play_button", False):
+            self.floating_play_button = FloatingPlayButton(self)
+            self.floating_play_button.show()
 
         logging.info("[Startup] Modpack Manager initialized successfully.")
     
@@ -1135,6 +1142,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.save_settings(default_modpack=selected_modpack)
         logging.info(f"[Exit] Saved default modpack: {selected_modpack}")
         logging.error("====================================================================")
+
+        # Ensure the Floating Play Button also closes
+        if hasattr(self, "floating_play_button") and self.floating_play_button is not None:
+            logging.info("[Exit] Closing Floating Play Button.")
+            self.floating_play_button.close()
+            self.floating_play_button = None  # Remove reference
 
         # Call the default closeEvent to continue closing the window
         super(ModpackManagerApp, self).closeEvent(event)
@@ -1795,20 +1808,20 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         logging.info(f"[Links] Opening external link: {url}")
         webbrowser.open(url)
 
-    # def toggle_floating_play_button(self):
-    #     """Enable or disable floating play button."""
-    #     show_button = self.floating_play_checkbox.isChecked()
-    #     self.settings["show_floating_play_button"] = show_button
-    #     self.save_settings()
+    def toggle_floating_play_button(self):
+        """Enable or disable floating play button."""
+        show_button = self.floating_play_checkbox.isChecked()
+        self.settings["show_floating_play_button"] = show_button
+        self.save_settings()
 
-    #     if show_button:
-    #         if not hasattr(self, "floating_play_button"):
-    #             self.floating_play_button = FloatingPlayButton(self)
-    #         self.floating_play_button.show()
-    #     else:
-    #         if hasattr(self, "floating_play_button"):
-    #             self.floating_play_button.close()
-    #             del self.floating_play_button
+        if show_button:
+            if not hasattr(self, "floating_play_button"):
+                self.floating_play_button = FloatingPlayButton(self)
+            self.floating_play_button.show()
+        else:
+            if hasattr(self, "floating_play_button"):
+                self.floating_play_button.close()
+                del self.floating_play_button
 
 ############################################################
 # Foundation of tutorial
@@ -1862,7 +1875,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     def open_settings_popup(self):
 
         # Prevent opening multiple settings popups
-        if getattr(self, "settings_popup_open", False):
+        if getattr(self, "settings_popup", None) and self.settings_popup.isVisible():
             logging.warning("[Settings] Settings popup already open. Preventing duplicate.")
             return
 
@@ -1874,6 +1887,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         popup = QDialog(self)
         popup.setWindowTitle("Settings")
         popup.setFixedSize(600, 550)
+        popup.setWindowModality(Qt.WindowModality.NonModal)  # Allow interaction with floating button
 
         settings_list = QListWidget()
         items = ["General", "Installation", "Theme", "Advanced", "Git Settings"]
@@ -1903,7 +1917,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         popup.setLayout(layout)
         popup.finished.connect(lambda: setattr(self, "settings_popup_open", False))
-        popup.exec()
+
+        # Store reference to prevent garbage collection
+        self.settings_popup = popup
+        self.settings_popup.show()  # Use show() instead of exec()
+        self.settings_popup.activateWindow()  # Bring the settings window to the front
+
         logging.info("[Settings] Settings popup closed.")
 
     def create_general_tab(self, parent=None):
@@ -1925,10 +1944,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # List all .exe files in the game directory and strip ".exe"
         exe_files = self.get_exe_files(default_game_dir)
 
-        # self.floating_play_checkbox = QCheckBox("Show Floating Play Button", parent)
-        # self.floating_play_checkbox.setChecked(self.settings.get("show_floating_play_button", False))
-        # self.floating_play_checkbox.stateChanged.connect(self.toggle_floating_play_button)
-        # layout.addWidget(self.floating_play_checkbox)
+        self.floating_play_checkbox = QCheckBox("Show Floating Play Button", parent)
+        self.floating_play_checkbox.setChecked(self.settings.get("show_floating_play_button", False))
+        self.floating_play_checkbox.stateChanged.connect(self.toggle_floating_play_button)
+        layout.addWidget(self.floating_play_checkbox)
 
         # Game Directory
         game_dir_label = QLabel("Game Directory:")
@@ -3115,22 +3134,22 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             self.stop_blinking()
             return  # Exit the function immediately
 
-        # ✅ Ensure that NO buttons blink if a download is in progress
+        # Ensure that NO buttons blink if a download is in progress
         if hasattr(self, "worker") and self.worker is not None and self.worker.isRunning():
             logging.info("[Blink] Download is still running. No buttons will blink.")
             return  # Exit early, preventing any blinking
 
-        # ✅ Blink Install Lovely button if missing
+        # Blink Install Lovely button if missing
         if not lovely_injector_installed:
             logging.debug("[Blink] Lovely Injector is missing. Blinking Install Lovely button.")
             self.blink_button(self.install_lovely_button)
 
-        # ✅ Blink Download button if modpack isn't downloaded
+        # Blink Download button if modpack isn't downloaded
         if not modpack_downloaded:
             logging.debug(f"[Blink] Modpack '{selected_modpack}' is not downloaded. Blinking Download button.")
             self.blink_button(self.download_button)
 
-        # ✅ Blink Install button only if modpack is downloaded but not installed (or different)
+        # Blink Install button only if modpack is downloaded but not installed (or different)
         if modpack_downloaded and  is_different_modpack:
             logging.debug(f"[Blink] Modpack '{selected_modpack}' is downloaded but different from current install. Blinking Install button.")
             self.blink_button(self.install_button)
