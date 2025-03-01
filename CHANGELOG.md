@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 ---
 
+## [1.12.0] - 2025-03-02
+### Added
+- Floating gadget for quicker game launch
+- Luajit2 Experimental build support
+
+### Fixed
+- Minor UI fixes
+
+---
+
 ## [1.11.6] - 2025-02-27
 ### Fixed
 - Fixed verify_modpack_integrity function not reading branches correctly

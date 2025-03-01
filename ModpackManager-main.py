@@ -14,9 +14,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/02/27"
+DATE = "2025/03/02"
 ITERATION = "30"
-VERSION = Version("1.11.6")
+VERSION = Version("1.12.0")
 
 system_platform = platform.system()
 
@@ -46,8 +46,11 @@ DEFAULT_SETTINGS = {
     "http_low_speed_time": 999999,  # Default: 999,999 sec
     "core_compression": 3,          # Default: Git's default compression level
     "use_steam_launch": False,
+    "use_luajit2": False,
     "disable_rainbow_title": False,
     "theme": "Light",
+    "log.level": "info",
+    "log.enable_stacktrace": False
 }
 
 # Configure paths based on OS
@@ -2221,18 +2224,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.setSpacing(12)
 
-        # Load default values
-        default_values = {
-            "log.level": "info",
-            "log.folder": LOGS_DIR,
-            "log.enable_stacktrace": False,
-        }
-        
-        # Load current settings (or use default if missing)
-        self.settings.setdefault("log.level", default_values["log.level"])
-        self.settings.setdefault("log.folder", LOGS_DIR)
-        self.settings.setdefault("log.enable_stacktrace", default_values["log.enable_stacktrace"])
-
         # Logging Level Dropdown
         log_level_layout = QHBoxLayout()
         log_level_label = QLabel("Logging Level:")
@@ -2242,8 +2233,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.log_level_dropdown.addItems(["debug", "info", "warning", "error"])
         self.log_level_dropdown.setCurrentText(self.settings.get("log.level", "info"))
         self.log_level_dropdown.currentIndexChanged.connect(lambda: self.apply_log_setting("log.level", self.log_level_dropdown.currentText()))
+        self.log_level_dropdown.setFixedSize(100, 30)
         log_level_layout.addWidget(self.log_level_dropdown)
         
+        log_level_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addLayout(log_level_layout)
 
         # Log Output File Selection
@@ -2254,11 +2247,17 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.log_folder_input = QLineEdit(self.settings.get("log.folder", LOGS_DIR))
         log_folder_layout.addWidget(self.log_folder_input)
 
-        log_folder_browse = QPushButton("Browse")
-        log_folder_browse.clicked.connect(self.browse_log_folder)
-        log_folder_layout.addWidget(log_folder_browse)
+        open_log_folder_button = QPushButton("Open")
+        open_log_folder_button.setFixedSize(100, 30)
+        open_log_folder_button.clicked.connect(lambda: self.open_directory(self.log_folder_input.text()))
+
+        # Layout for buttons BELOW the directory field
+        log_button_layout = QHBoxLayout()
+        log_button_layout.addStretch()  # Push buttons to the right
+        log_button_layout.addWidget(open_log_folder_button)
 
         layout.addLayout(log_folder_layout)
+        layout.addLayout(log_button_layout)
 
         # Enable Stack Trace Checkbox
         self.stacktrace_checkbox = QCheckBox("Enable Stack Trace Logging")
@@ -2270,11 +2269,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         self.use_steam_launch_checkbox = QCheckBox("Launch game via Steam (Windows)", self)
         self.use_steam_launch_checkbox.setChecked(self.settings.get("use_steam_launch", False))
         self.use_steam_launch_checkbox.stateChanged.connect(lambda: self.save_settings(use_steam_launch=self.use_steam_launch_checkbox.isChecked()))
-
-        if system_platform != "Windows":
-            self.use_steam_launch_checkbox.hide()  # Hide overlay initially
-
+        self.use_steam_launch_checkbox.setEnabled(system_platform == "Windows")  # Hide properly
         layout.addWidget(self.use_steam_launch_checkbox)
+
+        # LuaJIT2 Experimental Checkbox
+        self.luajit_checkbox = QCheckBox("Enable LuaJIT2 (Experimental)", self)
+        self.luajit_checkbox.setChecked(self.settings.get("use_luajit2", False))
+        self.luajit_checkbox.stateChanged.connect(self.toggle_luajit_option)
+        self.luajit_checkbox.setEnabled(system_platform == "Windows")  # Hide properly
+        layout.addWidget(self.luajit_checkbox)
 
         # "Remove user_settings.json" Button
         remove_settings_button = QPushButton("Remove user_settings.json")
@@ -2285,36 +2288,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         tab.setLayout(layout)
         return tab
 
-        # # LuaJIT2 Experimental Checkbox
-        # self.luajit_checkbox = QCheckBox("Enable LuaJIT2 (Experimental)", tab)
-        # self.luajit_checkbox.setChecked(self.settings.get("use_luajit2", False))
-        # self.luajit_checkbox.stateChanged.connect(self.toggle_luajit_option)
-
-        # if system_platform != "Windows":
-        #     self.luajit_checkbox.hide()  # Hide overlay initially
-
-        # # Add checkbox to layout
-        # layout.addWidget(self.luajit_checkbox)
-
-        tab.setLayout(layout)
-        return tab
-
     def apply_log_setting(self, setting_key, value):
         """Apply logging settings and save them persistently."""
         self.settings[setting_key] = value  # Update in-memory settings
         self.save_settings()  # Persist settings to file
         logging.debug(f"[Settings] {setting_key} set to {value}")
         self.setup_logging()  # Reapply logging immediately
-
-    def browse_log_folder(self):
-        """Open file dialog to select a log file."""
-        logging.debug("[Settings] User opened file browser for log file selection.")
-        log_folder = QFileDialog.getExistingDirectory(None, "Select Log Folder", self.log_folder_input.text())
-
-        if log_folder:
-            self.log_folder_input.setText(log_folder)
-            self.save_settings(log_folder=log_folder)
-            QMessageBox.information(None, "Log Folder Updated", f"New log folder: {log_folder}")
         
     def setup_logging(self):
         """Configure logging based on user settings."""
@@ -4799,6 +4778,16 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
         if QMessageBox.question(self, "Install Lovely Injector", msg, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
             logging.info("[Lovely Injector] Installation canceled by user.")
+            
+            # Revert the toggle in settings
+            self.settings["use_luajit2"] = False
+            self.save_settings()
+            self.settings = self.load_settings()
+
+            # Revert the toggle in UI if applicable
+            if hasattr(self, "luajit_checkbox"):
+                self.luajit_checkbox.setChecked(False)
+
             return
 
         def install_luajit2():
@@ -4811,8 +4800,8 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
                 QMessageBox.critical(None, "Error", "LuaJIT2 is only supported on Windows.")
                 return
 
-            lua_jit_url = "https://cdn.discordapp.com/attachments/1336473631483760791/1336473632238473291/lua51.dll"
-            lovely_url = "https://cdn.discordapp.com/attachments/1336473631483760791/1336473632586862643/version.dll"
+            lua_jit_url = "https://raw.githubusercontent.com/Dimserene/Balatro-ModpackManager/main/luajit2/lua51.dll"
+            lovely_url = "https://raw.githubusercontent.com/Dimserene/Balatro-ModpackManager/main/luajit2/version.dll"
 
             lua_jit_path = os.path.join(game_dir, "lua51.dll")
             lovely_path = os.path.join(game_dir, "version.dll")
@@ -4835,7 +4824,6 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             except requests.RequestException as e:
                 logging.error(f"[Lovely Injector] Failed to download files: {e}", exc_info=True)
                 QMessageBox.critical(None, "Error", f"Failed to download files: {e}")
-
 
         def install_standard_lovely():
             """Install the standard Lovely Injector (without LuaJIT2)."""
