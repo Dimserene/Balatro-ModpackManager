@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 ---
+## [1.13.0] - 2025-03-03
+### Changed
+- (At least attempted to) transition to `pathlib.Path()` for better cross-platform file handling.
+
+### Fixed
+- Fixed profile texbox not editable and cannot be saved.
+
+---
 
 ## [1.12.0] - 2025-03-02
 ### Added
