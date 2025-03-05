@@ -15,9 +15,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/03/03"
+DATE = "2025/03/05"
 ITERATION = "31"
-VERSION = Version("1.13.0")
+VERSION = Version("1.13.1")
 
 system_platform = platform.system()
 
@@ -4343,7 +4343,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
     def load_presets(self):
         """Load presets from the JSON file."""
         try:
-            return json.load(PRESETS_FILE.read_text())
+            return json.loads(PRESETS_FILE.read_text())
         except (FileNotFoundError, json.JSONDecodeError):
             logging.warning("[Presets] No presets file found or file is corrupted. Returning empty dictionary.")
             return {}

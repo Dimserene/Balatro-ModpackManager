@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 ---
+## [1.13.1] - 2025-03-05
+### Fixed
+- Fixed presets not being load properly.
+
+---
 ## [1.13.0] - 2025-03-03
 ### Changed
 - (At least attempted to) transition to `pathlib.Path()` for better cross-platform file handling.
