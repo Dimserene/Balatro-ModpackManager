@@ -15,9 +15,9 @@ from io import BytesIO
 # Detect OS and set default settings
 ############################################################
 
-DATE = "2025/03/05"
+DATE = "2025/03/11"
 ITERATION = "31"
-VERSION = Version("1.13.1")
+VERSION = Version("1.13.2")
 
 system_platform = platform.system()
 
@@ -1211,14 +1211,15 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         """Process custom files, zips, and repositories into Modpacks/Custom/"""
         logging.debug(f"[Import] Handling file: {path}")
 
-        modpack_directory = self.get_expanded_path("modpack_directory")
+        path = Path(path)
 
+        modpack_directory = self.get_expanded_path("modpack_directory")
         custom_dir = modpack_directory / "Custom"
         custom_dir.mkdir(parents=True, exist_ok=True)  # Ensure Custom directory exists
 
         logging.info(f"[Import] Using custom mod directory: {custom_dir}")
 
-        if path.startswith("http"):  # If URL
+        if str(path).startswith("http"):  # If URL
             logging.debug(f"[Import] Handling URL: {path}")
             self.handle_url(path)
             return
@@ -1227,10 +1228,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             file_name = path.name
             clean_name = self.clean_mod_name(path.stem)  # Clean mod name
             dest_dir = custom_dir / clean_name  # Folder for the file
-            dest_dir.mkdir(parents=True, exist_ok=True)
 
             if self.is_supported_archive(path):  # Copy & extract archives
                 logging.info(f"[Extract] Extracting archive: {file_name}")
+                dest_dir.mkdir(parents=True, exist_ok=True)
                 self.extract_archive(path, dest_dir)
                 self.flatten_nested_folders(dest_dir)  # Flatten nested folders after extraction
 
@@ -1242,7 +1243,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             else:
                 QMessageBox.warning(self, "Unknown File", "Only ZIP, TAR, RAR, 7Z, LUA, and TOML files are supported.")
                 logging.warning(f"[Import] Unknown file type: {file_name}")
-
+            
         elif path.is_dir():  # If it's a folder
             folder_name = path.name
             clean_folder_name = self.clean_mod_name(folder_name)  # Clean mod name
@@ -1313,26 +1314,26 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
 
     def is_supported_archive(self, file_path):
         """Checks if the file is a supported archive format."""
-        return file_path.endswith((".zip", ".tar.gz", ".tar.xz", ".tar.bz2", ".rar", ".7z"))
+        return str(file_path).endswith((".zip", ".tar", ".tar.gz", ".tar.xz", ".tar.bz2", ".rar", ".7z"))
 
     def extract_archive(self, archive_path, extract_to):
         """Extracts various archive types, using system tools for .rar and .7z."""
         try:
             logging.info(f"[Extract] Starting extraction: {archive_path}")
-            temp_extract_dir = extract_to + "_temp"
+            temp_extract_dir = Path(str(extract_to) + "_temp")
 
             # Remove existing folder before extraction
             if temp_extract_dir.exists():
                 shutil.rmtree(temp_extract_dir)
 
-            temp_extract_dir.makedirs(parents=True, exist_ok=True)
+            temp_extract_dir.mkdir(parents=True, exist_ok=True)
             
             if archive_path.suffix == ".zip":  # ZIP Extraction
                 with zipfile.ZipFile(archive_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_extract_dir)
                 logging.info(f"[Extract] ZIP extracted successfully: {archive_path}")
 
-            elif archive_path.suffix in [".tar.gz", ".tar.xz", ".tar.bz2"]:  # TAR Extraction
+            elif archive_path.suffix in [".tar", ".tar.gz", ".tar.xz", ".tar.bz2"]:  # TAR Extraction
                 with tarfile.open(archive_path, 'r:*') as tar_ref:
                     tar_ref.extractall(temp_extract_dir)
                 logging.info(f"[Extract] TAR extracted successfully: {archive_path}")
@@ -1380,9 +1381,12 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             logging.info(f"[Extract] Extracting .rar file: {archive_path}")
 
             if system_platform == "Windows":  # Windows
-                winrar_path = "C:\\Program Files\\WinRAR\\WinRAR.exe"
+                winrar_path = Path("C:\\Program Files\\WinRAR\\WinRAR.exe")
+                seven_zip_path = Path("C:\\Program Files\\7-Zip\\7z.exe")
                 if winrar_path.exists():
                     subprocess.run([winrar_path, "x", "-y", str(archive_path), str(extract_to)], check=True)
+                elif seven_zip_path.exists():
+                    subprocess.run([seven_zip_path, "x", "-y", str(archive_path), f"-o{str(extract_to)}"], check=True)
                 else:
                     raise FileNotFoundError("WinRAR not found. Install WinRAR or use another extractor.")
 
@@ -1398,7 +1402,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         try:
             logging.info(f"[Extract] Extracting .7z file: {archive_path}")
             if system_platform == "Windows":  # Windows
-                seven_zip_path = "C:\\Program Files\\7-Zip\\7z.exe"
+                seven_zip_path = Path("C:\\Program Files\\7-Zip\\7z.exe")
                 if seven_zip_path.exists():
                     subprocess.run([seven_zip_path, "x", "-y", str(archive_path), f"-o{str(extract_to)}"], check=True)
                 else:
@@ -1412,18 +1416,35 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             QMessageBox.critical(self, "7Z Extraction Error", f"Failed to extract .7z file: {str(e)}")
 
     def handle_url(self, url):
-        """Handle URLs for downloading files or cloning repos."""
+        """Handle URLs for downloading files or cloning repositories."""
+        url = str(url).replace("\\", "/")  # Convert backslashes to forward slashes
+
+        # Ensure there are no double "https://" issues
+        if url.startswith("https:/") and not url.startswith("https://"):
+            url = url.replace("https:/", "https://", 1)
+
+        # If no scheme is present, add "https://"
         parsed_url = urlparse(url)
-        file_name = Path(parsed_url.path).name  # Extract the file name
+        if not parsed_url.scheme:
+            url = "https://" + url.lstrip("/")  # Fix cases where "github.com/Dimserene" is passed
 
+        parsed_url = urlparse(url)  # Re-parse after fixing
+
+        # Validate that the URL has a valid host
+        if not parsed_url.netloc:
+            logging.error(f"[Download] Invalid URL: {url}. No valid host found.")
+            QMessageBox.critical(self, "Download Failed", f"Invalid URL: {url}\nNo valid host found.")
+            return
+
+        file_name = Path(parsed_url.path).name  # Extract filename
         modpack_directory = self.get_expanded_path("modpack_directory")
-
-        download_path = modpack_directory / "Custom" / file_name
+        custom_dir = modpack_directory / "Custom"
+        download_path = custom_dir / file_name
 
         try:
-            if url.endswith(".git"):  # Git repository
-                repo_name = Path(file_name).stem  # Remove file extension
-                repo_path = modpack_directory / "Custom" / repo_name
+            if url.endswith(".git") or "github.com" or "gitlab.com" in url:
+                repo_name = Path(file_name).stem  # Get repo name
+                repo_path = custom_dir / repo_name
 
                 if repo_path.exists():
                     logging.warning(f"[Git] Repo already exists: {repo_name}")
@@ -1447,6 +1468,10 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
             logging.info(f"[Download] File downloaded successfully: {file_name}")
             QMessageBox.information(self, "Download Complete", f"File downloaded: {file_name}")
             self.handle_custom_files(download_path)  # Process downloaded file
+
+        except requests.exceptions.InvalidURL as e:
+            logging.error(f"[Download] Invalid URL: {url}. Error: {e}")
+            QMessageBox.critical(self, "Download Failed", f"Invalid URL: {url}\nError: {e}")
 
         except Exception as e:
             logging.error(f"[Download] Failed to download {url}: {e}", exc_info=True)
@@ -4443,7 +4468,7 @@ class ModpackManagerApp(QWidget):  # or QMainWindow
         # Always install "Steamodded" and "ModpackUtil"
         mandatory_mods = {"Steamodded", "ModpackUtil"}
         all_mods = mandatory_mods.union(set(os.listdir(mods_src)))
-        filtered_mods = [mod for mod in all_mods if mod not in excluded_mods or mod in mandatory_mods]
+        filtered_mods = sorted([mod for mod in all_mods if mod not in excluded_mods or mod in mandatory_mods])
 
         try:
             # Iterate through mods and copy them
